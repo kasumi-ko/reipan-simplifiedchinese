@@ -99,10 +99,12 @@ if(REIPAN_HAVE_FFMPEG)
     target_link_libraries(ReiPan PRIVATE avcodec avutil swscale)
     # The import libraries resolve against DLLs that must sit next to the exe.
     if(WIN32)
+        file(GLOB REIPAN_FFMPEG_DLLS CONFIGURE_DEPENDS "${REIPAN_FFMPEG_ROOT}/bin/*.dll")
         add_custom_command(TARGET ReiPan POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_directory
-                    "${REIPAN_FFMPEG_ROOT}/bin"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    ${REIPAN_FFMPEG_DLLS}
                     "$<TARGET_FILE_DIR:ReiPan>"
+            VERBATIM
         )
     endif()
 endif()
