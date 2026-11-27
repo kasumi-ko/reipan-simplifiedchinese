@@ -130,14 +130,14 @@ const char *ProblemText(int result)
     switch (result)
     {
     case REIPAN_GAMEFILE_NOT_AN_IMAGE:
-        return "That file is not one ReiPan can read. Choose an .iso (a .chd or "
-               ".cso has to be turned back into an .iso first) or IMG_BD.BIN.";
+        return UiText("That file is not one ReiPan can read. Choose an .iso (a .chd or "
+                      ".cso has to be turned back into an .iso first) or IMG_BD.BIN.");
     case REIPAN_GAMEFILE_NOT_THE_GAME:
-        return "That disc image does not hold Fatal Frame III. Choose an image of "
-               "your own European copy of the game.";
+        return UiText("That disc image does not hold Fatal Frame III. Choose an image of "
+                      "your own European copy of the game.");
     case REIPAN_GAMEFILE_CUT_SHORT:
-        return "That copy is cut short: the game's files run past the end of it. "
-               "Copy or dump the disc again.";
+        return UiText("That copy is cut short: the game's files run past the end of it. "
+                      "Copy or dump the disc again.");
     case REIPAN_GAMEFILE_OTHER_RELEASE:
 #ifdef REIPAN_SLPS_25544_CHS
         return "请选择简体中文版适配目录中的 IMG_BD.BIN。";
@@ -154,8 +154,8 @@ const char *ProblemText(int result)
 #endif
     case REIPAN_GAMEFILE_UNREADABLE:
     default:
-        return "That file could not be read. Check that it is still there and "
-               "not in use, then choose it again.";
+        return UiText("That file could not be read. Check that it is still there and "
+                      "not in use, then choose it again.");
     }
 }
 
@@ -204,9 +204,9 @@ void TakePick()
         SDL_Log("ReiPan: the file dialog failed: %s", error.c_str());
         const char *ini = ReiPan_ConfigPath();
         ShowStatus("problem",
-                   "The file dialog could not be opened. Add the path as "
-                   "data_folder under [paths] in this file, then start ReiPan "
-                   "again:",
+                   UiText("The file dialog could not be opened. Add the path as "
+                          "data_folder under [paths] in this file, then start ReiPan "
+                          "again:"),
                    ini != nullptr ? ini : "reipan.ini");
         return;
     }

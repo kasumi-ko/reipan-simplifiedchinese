@@ -2,6 +2,7 @@
 #include "reipan_rml_common.h"
 #include "reipan_rmlui.h"
 #include "reipan_ui.h"
+#include "reipan_ui_locale.h"
 #include "../io/reipan_input.h"
 #include "../reipan_config.h"
 #include "../rendering/reipan_renderer.h"
@@ -28,6 +29,9 @@
 
 namespace
 {
+using ReiPanUiLocale::Translate;
+using ReiPanUiLocale::UiText;
+
 constexpr const char *kDocumentPath = "resources/rml/options.rml";
 
 /* UTF-8 for the step arrows either side of a value. */
@@ -277,15 +281,15 @@ void RestoreGameDefaults()
 std::string ButtonLayoutHelp()
 {
     static const char *const kLayouts[] = {
-        "Type A: Triangle raises the Camera Obscura, Cross or R1 takes the "
-        "picture and L1 a lens shot.",
-        "Type B: Triangle raises the Camera Obscura, Cross or R1 takes the "
-        "picture and Circle a lens shot.",
-        "Type C: R1 raises the Camera Obscura, Cross takes the picture and "
-        "Triangle or L1 a lens shot.",
+        UiText("Type A: Triangle raises the Camera Obscura, Cross or R1 takes the "
+               "picture and L1 a lens shot."),
+        UiText("Type B: Triangle raises the Camera Obscura, Cross or R1 takes the "
+               "picture and Circle a lens shot."),
+        UiText("Type C: R1 raises the Camera Obscura, Cross takes the picture and "
+               "Triangle or L1 a lens shot."),
     };
     const int layout = std::clamp((int)GameOptions().pad_cfg, 0, 2);
-    return std::string("The game's three button layouts. ") + kLayouts[layout];
+    return std::string(UiText("The game's three button layouts. ")) + kLayouts[layout];
 }
 
 Page GamePage()
@@ -312,12 +316,12 @@ Page GamePage()
     rows.push_back(Slider(
         "Brightness",
         [] {
-            return std::string(
+            return std::string(UiText(
                        "The game's own brightness filter over the world, in "
-                       "twelve steps; it starts on 7. ") +
+                       "twelve steps; it starts on 7. ")) +
                    (g_opt.from == REIPAN_RML_OPTIONS_FROM_PAUSE
-                        ? "It shows once play resumes."
-                        : "It shows once play starts.");
+                        ? UiText("It shows once play resumes.")
+                        : UiText("It shows once play starts."));
         },
         0.0f, (float)(kBrightnessLevels - 1), 1.0f,
         [] { return (float)GameOptions().b00; },
@@ -395,19 +399,19 @@ std::string HdrHelp()
     float white = 0.0f;
     float peak = 0.0f;
     ReiPan_RendererGetHdrDisplayInfo(&white, &peak);
-    std::string text = HdrActive() ? "Presenting in HDR." : "Presenting in SDR.";
+    std::string text = HdrActive() ? UiText("Presenting in HDR.") : UiText("Presenting in SDR.");
     if (white > 0.0f)
     {
-        char note[96];
+        char note[160];
         SDL_snprintf(note, sizeof(note),
-                     " The display reports SDR white at %.0f nits and a "
-                     "%.0f nit peak.",
+                     UiText(" The display reports SDR white at %.0f nits and a "
+                            "%.0f nit peak."),
                      (double)white, (double)peak);
         text += note;
     }
     if (HdrActive() && ReiPan_RendererHdrIsFullPrecision() == 0)
     {
-        text += " The scene is 8-bit; restart with HDR on for 10-bit.";
+        text += UiText(" The scene is 8-bit; restart with HDR on for 10-bit.");
     }
     return text;
 }
@@ -626,22 +630,25 @@ std::vector<int> Backends()
 
 std::string BackendHelp()
 {
-    const std::string asked =
-        ReiPan_RendererGetBackendLabel(ReiPan_RendererGetBackend());
-    std::string text = "Which graphics API draws the game. Auto suits most "
-                       "systems. Drawing with ";
-    text += ReiPan_RendererGetBackendLabel(ReiPan_RendererGetBackendActive());
-    text += " now.";
+    const auto asked = Translate(ReiPan_RendererGetBackendLabel(ReiPan_RendererGetBackend()));
+    const auto active = Translate(ReiPan_RendererGetBackendLabel(ReiPan_RendererGetBackendActive()));
+    char note[256];
+    SDL_snprintf(note, sizeof(note),
+                 UiText("Which graphics API draws the game. Auto suits most systems. Drawing with %s now."),
+                 active.data());
+    std::string text = note;
     switch (ReiPan_RendererGetBackendStatus())
     {
     case REIPAN_BACKEND_STATUS_RESTART:
-        text += " Restart ReiPan to switch to " + asked + ".";
+        SDL_snprintf(note, sizeof(note), UiText(" Restart ReiPan to switch to %s."), asked.data());
+        text += note;
         break;
     case REIPAN_BACKEND_STATUS_FALLBACK:
-        text += " " + asked + " could not be started.";
+        SDL_snprintf(note, sizeof(note), UiText(" %s could not be started."), asked.data());
+        text += note;
         break;
     case REIPAN_BACKEND_STATUS_OVERRIDDEN:
-        text += " SDL_GPU_DRIVER is set and overrides this setting.";
+        text += UiText(" SDL_GPU_DRIVER is set and overrides this setting.");
         break;
     default:
         break;
@@ -700,8 +707,8 @@ Page GraphicsPage()
                    ReiPan_RendererGetRenderSize(&width, &height);
                    char text[96];
                    SDL_snprintf(text, sizeof(text),
-                                "The multiplier for the mode above. The game "
-                                "is drawn at %dx%d now.",
+                                UiText("The multiplier for the mode above. The game "
+                                       "is drawn at %dx%d now."),
                                 width, height);
                    return std::string(text);
                },
@@ -895,23 +902,23 @@ std::string GyroHelp()
 {
     ReiPan_GyroStatus status;
     ReiPan_GyroGetStatus(&status);
-    std::string text = "Aim the raised Camera Obscura by moving the "
-                       "controller, alongside the stick. ";
+    std::string text = UiText("Aim the raised Camera Obscura by moving the "
+                              "controller, alongside the stick. ");
     if (status.has_gamepad == 0)
     {
-        text += "No controller is connected.";
+        text += UiText("No controller is connected.");
     }
     else if (status.has_gyro == 0)
     {
-        text += "This controller has no gyro.";
+        text += UiText("This controller has no gyro.");
     }
     else if (status.active != 0 && status.calibration < 1.0f)
     {
-        text += "Learning its drift: set it down and keep it still.";
+        text += UiText("Learning its drift: set it down and keep it still.");
     }
     else
     {
-        text += "Its drift is learned whenever it lies still.";
+        text += UiText("Its drift is learned whenever it lies still.");
     }
     return text;
 }
@@ -955,33 +962,33 @@ std::string TriggerRumbleHelp()
 {
     ReiPan_HapticsStatus status;
     ReiPan_HapticsGetStatus(&status);
-    std::string text = "Feel heartbeats, blows, a ghost's grip, thunder and the "
-                       "cutscenes in the triggers as well. ";
+    std::string text = UiText("Feel heartbeats, blows, a ghost's grip, thunder and the "
+                              "cutscenes in the triggers as well. ");
     if (!RumbleOn())
     {
-        text += "Vibration is off on the Game page.";
+        text += UiText("Vibration is off on the Game page.");
     }
     else if (status.has_gamepad == 0)
     {
-        text += "No controller is connected.";
+        text += UiText("No controller is connected.");
     }
     else if (status.triggers == REIPAN_TRIGGERS_SEARCHING)
     {
-        text += "Looking for this controller's trigger motors: press a button "
-                "on it.";
+        text += UiText("Looking for this controller's trigger motors: press a button "
+                       "on it.");
     }
     else if (RumbleSettings().triggers == 0)
     {
-        text += "For a controller with motors behind its triggers: Xbox One "
-                "and later.";
+        text += UiText("For a controller with motors behind its triggers: Xbox One "
+                       "and later.");
     }
     else if (status.triggers == REIPAN_TRIGGERS_NONE)
     {
-        text += "This controller has no motors there.";
+        text += UiText("This controller has no motors there.");
     }
     else
     {
-        text += "On for this controller.";
+        text += UiText("On for this controller.");
     }
     return text;
 }
@@ -1909,10 +1916,10 @@ void RefreshHelpAndPrompts()
     std::string help;
     if (const Row *row = SelectedRow(); row != nullptr && !g_opt.confirm.IsOpen())
     {
-        help = row->help ? row->help() : "";
+        help = row->help ? std::string(Translate(row->help())) : "";
         if (!row->IsEnabled() && !help.empty())
         {
-            help += " (Not available with the current settings.)";
+            help += UiText(" (Not available with the current settings.)");
         }
     }
     if (help != g_opt.shown_help && g_opt.help != nullptr)
@@ -2023,6 +2030,8 @@ int ReiPan_RmlOptionsOpen(int from)
     ShowPage(0, false);
     RefreshHelpAndPrompts();
     ReiPanRmlCommon::PlayDecide();
+    SDL_Log("ReiPan RmlUi: options opened from %s",
+            from == REIPAN_RML_OPTIONS_FROM_TITLE ? "title" : "pause");
     return 1;
 }
 
