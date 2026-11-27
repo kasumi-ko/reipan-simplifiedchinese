@@ -25,10 +25,8 @@
 #include "graphics/scene/scene.h"       // GetFileNoFromSceneNo, SceneDatGetValue
 #include "graphics/scene/scene_effect.h"    // SceneMovieEffectMain
 #ifdef REIPAN_SLPS_25544_CHS
-#include "system/eeiop/cd_file_dat.h"
+#include "graphics/movie/slps_captions.h"
 #include "system/playpss/playpss.h"    // playPssGetFrameIndex
-#include <stdio.h>
-#include <stdlib.h>
 #endif
 
 #define MOVIE_TITLE_CENTER_X    320.0f  // captions are centred here
@@ -36,30 +34,6 @@
 #define MOVIE_TITLE_BASE_MIN_X  218.0f  // where a plate at the floor starts
 
 static MOVIE_TITLE_CTRL movie_title_ctrl;   // sbss 0x3736e0
-
-#ifdef REIPAN_SLPS_25544_CHS
-struct ChineseMovieCue
-{
-    int first_frame;
-    int end_frame;
-    u_char text[24];
-};
-
-// Both SLPS_255.44 opening PSS entries contain the same 30 fps movie.
-// Frame windows follow the dialogue in the original PCM track.
-// Text uses the glyph indices of SLPS_255.44's Chinese font_tex.pk4.
-static ChineseMovieCue opening_cues[] = {
-    {1375, 1423, {0xf1, 0x72, 0xf1, 0x73, 0xf2, 0xc0, 0xf2, 0xc0, MSG_CODE_END}},  // 优雨……
-    {2165, 2213, {0xf0, 0xc1, 0x9f, 0xac, 0xf6, 0x3c, MSG_CODE_END}},  // 怜小姐！
-    {2351, 2408, {0xf4, 0x40, 0x69, 0xf3, 0x9b, 0xf0, 0x8f, 0xf2, 0x55, 0xf2, 0x3f, 0x56, 0x53, MSG_CODE_END}},  // 差不多该收工了。
-    {2453, 2520, {0xf2, 0x13, 0x82, 0x71, 0x6b, 0x5c, 0xf0, 0x94, 0xf1, 0x4d, 0x55, MSG_CODE_END}},  // 听说这里有幽灵，
-    {2523, 2586, {0x63, 0xf6, 0x57, 0x81, 0x73, 0xf1, 0x74, 0xf3, 0x58, 0xf2, 0x1a, 0x65, 0x53, MSG_CODE_END}},  // 可惜什么都没拍到。
-    {2669, 2744, {0xf1, 0x76, 0xf1, 0xba, 0xf3, 0x9b, 0xf0, 0x8e, 0xf2, 0xcb, 0x59, 0x71, 0x7b, 0x53, MSG_CODE_END}},  // 传闻多半就是这样。
-    {2747, 2811, {0x92, 0xf0, 0x44, 0xf0, 0xb0, 0x71, 0x66, 0xf4, 0xae, 0x62, 0xf0, 0x01, 0x53, MSG_CODE_END}},  // 我先把这个搬上车。
-    {3431, 3479, {0xf1, 0x72, 0xf1, 0x73, 0xf0, 0x9e, MSG_CODE_END}},  // 优雨？
-};
-static int last_opening_caption = -1;
-#endif
 
 // FF3 0x002192b8 (MovieTitle_static_init), from its stores.
 SPRT_DAT movie_title_base_tex[3] =      // bss 0x3f6138
@@ -119,9 +93,6 @@ void EndMovieWithTitle(void)
 void MovieTitleInit(int scene_no)
 {
     movie_title_ctrl.scene_no = scene_no;
-#ifdef REIPAN_SLPS_25544_CHS
-    last_opening_caption = -1;
-#endif
 }
 
 // FF3 0x00218eb8.
@@ -129,26 +100,8 @@ void MovieTitleInit(int scene_no)
 void MovieTitleMain(int timer, int subtitle_on)
 {
 #ifdef REIPAN_SLPS_25544_CHS
-    int active = -1;
-    const int file = GetFileNoFromSceneNo(movie_title_ctrl.scene_no);
-    if (subtitle_on && timer >= 0 && (file == SCENE0010M_PSS || file == SCENE5001M_PSS))
-    {
-        for (int i = 0; i < (int)(sizeof(opening_cues) / sizeof(opening_cues[0])); i++)
-        {
-            ChineseMovieCue &cue = opening_cues[i];
-            if (timer >= cue.first_frame && timer < cue.end_frame)
-            {
-                MovieTitleDrawText(cue.text, MOVIE_TITLE_DISP_Y, MOVIE_TITLE_MSG_COL, 1, 0x80);
-                active = i;
-                break;
-            }
-        }
-    }
-    static const bool trace = getenv("REIPAN_TRACE_MOVIE_CAPTIONS") != nullptr;
-    if (trace && active >= 0 && active != last_opening_caption)
-        printf("[movie caption] scene %d cue %d frame %d (SLPS_255.44 glyphs)\n",
-               movie_title_ctrl.scene_no, active + 1, timer);
-    last_opening_caption = active;
+    if (subtitle_on && !SlpsDrawSceneCaption(movie_title_ctrl.scene_no, timer))
+        SlpsDrawVoiceCaption(MOVIE_TITLE_DISP_Y, MOVIE_TITLE_MSG_COL);
 #else
     MOVIE_TITLE_DAT *data    = GetMovieTitleDat(movie_title_ctrl.scene_no);
     int              tbl_pos = GetMovieTitleDatTblPos(data, timer);

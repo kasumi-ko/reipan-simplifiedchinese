@@ -79,6 +79,8 @@ void ReiPan_VoiceSetStereoPair(int core0, int voice0, int core1, int voice1);
  * what a stopped SPU2 voice reports. */
 u_int ReiPan_VoiceGetNowAddr(int core, int voice);
 int   ReiPan_VoiceIsPlaying(int core, int voice);
+// Source samples consumed since key-on, or -1 when the slot is inactive.
+long long ReiPan_VoiceGetSamplePosition(int core, int voice);
 
 /* ---- auto-DMA ("external input") --------------------------------------
  *

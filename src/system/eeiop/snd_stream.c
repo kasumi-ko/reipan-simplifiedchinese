@@ -32,6 +32,7 @@
 #include <stdlib.h>                     // abort
 #include <string.h>                     // memcpy, memset
 
+#include "sdk/iop_voice.h"             // ReiPan_VoiceGetSamplePosition
 #include "system/eeiop/cddat.h"         // GetFileStartSector, GetFileSize
 #include "system/eeiop/ee_iop.h"        // iopCommandRegister, GetStreamWrkRet, CheckEndPointThrough
 #include "system/eeiop/fileload.h"      // FileLoadReqEE, FileLoadIsEnd, FileLoadCancel
@@ -706,14 +707,25 @@ int SndStreamIsUse(int wrk_id)
     return snd_stream_wrk[wrk_id].status != ST_STREAM_NO_USE;
 }
 
-int SndStreamIsFilePlaying(int file_no)
+bool SndStreamGetCaptionPosition(int slot, int *file, int *milliseconds)
 {
-    for (const SND_STREAM_WRK &wrk : snd_stream_wrk)
-    {
-        if (wrk.file_no == file_no && wrk.status == ST_STREAM_PLAYING)
-            return 1;
-    }
-    return 0;
+    if ((u_int)slot >= sizeof(snd_stream_wrk) / sizeof(snd_stream_wrk[0]))
+        return false;
+
+    const SND_STREAM_WRK &wrk = snd_stream_wrk[slot];
+    const int rate = wrk.info[0].smpl_rate;
+    if (wrk.status != ST_STREAM_PLAYING || !wrk.header_ready || rate <= 0 || wrk.s.nchannel <= 0)
+        return false;
+
+    const long long samples = ReiPan_VoiceGetSamplePosition(wrk.p.attr[0].core, wrk.p.voice[0]);
+    if (samples < 0)
+        return false;
+
+    // A resumed stream only consumes samples after its starting sector.
+    const long long skipped = 2048LL * wrk.s.offset / (16 * wrk.s.nchannel) * 28;
+    *file = wrk.file_no;
+    *milliseconds = (int)((samples + skipped) * 1000 / rate);
+    return true;
 }
 
 // FF3 0x0026c700

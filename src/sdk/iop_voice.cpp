@@ -127,6 +127,7 @@ typedef struct
 
     s16      interp[4];             /* resampler window, interp[3] newest     */
     u_int    phase;                 /* 0..0xfff between interp[1] and [2]     */
+    u_long   source_samples;
 
     u_short  voll, volr;
     u_short  pitch;
@@ -552,6 +553,7 @@ static int VoiceNextOutputSample(IopVoice *v, s32 *out)
 
         if (!NextVoiceSample(v, &s))
             return 0;
+        ++v->source_samples;
 
         v->interp[0] = v->interp[1];
         v->interp[1] = v->interp[2];
@@ -853,6 +855,7 @@ static void KeyOnUnlocked(IopVoice *v)
      * prime the interpolation window. */
     memset(v->interp, 0, sizeof(v->interp));
     v->phase = 4u * (u_int)PITCH_ONE;
+    v->source_samples = 0;
 
     v->playing = 1;
     FillAdpcmHeader(v);
@@ -1146,6 +1149,18 @@ u_int ReiPan_VoiceGetNowAddr(int core, int voice)
     UnlockVoices();
 
     return adrs;
+}
+
+long long ReiPan_VoiceGetSamplePosition(int core, int voice)
+{
+    if (!voice_ready)
+        return -1;
+
+    LockVoices();
+    IopVoice *v = VoiceAt(core, voice);
+    const long long samples = v != nullptr && VoiceSounding(v) ? (long long)v->source_samples : -1;
+    UnlockVoices();
+    return samples;
 }
 
 /* "Still advancing its own play position", NOT "still making sound".

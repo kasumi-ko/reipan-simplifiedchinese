@@ -184,7 +184,7 @@ void SndStreamPause(int wrk_id);                        // FF3 0x0026c5c0
 void SndStreamRestart(int wrk_id);                      // FF3 0x0026c610
 void SndStreamSetPosition(int wrk_id, float *pos);      // FF3 0x0026c658: unreferenced
 int  SndStreamIsUse(int wrk_id);                        // FF3 0x0026c6e0
-int  SndStreamIsFilePlaying(int file_no);
+bool SndStreamGetCaptionPosition(int slot, int *file, int *milliseconds);
 int  SndStreamIsPreload(int wrk_id);                    // FF3 0x0026c700: 1 for a free slot
 SND_STREAM_ERR SndStreamGetInfo(int wrk_id, int *nchannel, int *interleave_byte,
                                 SOUND_INFO **info);     // FF3 0x0026c738
