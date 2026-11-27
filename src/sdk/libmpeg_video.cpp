@@ -389,21 +389,18 @@ int ReiPanMpegVideoGetPicture(sceMpeg *mp, sceIpuRGB32 *rgb32, int qwc)
      * meters the demuxer, so that is common), the failed decode left an empty
      * 0x0 frame, which was dropped without advancing next_due -- so the film
      * stayed behind and every later picture went the same way. */
+    const int kMaxCatchUp = 4;
+    int       skipped     = 0;
+    while (skipped < kMaxCatchUp &&
+           g_video.have_first &&
+           now >= g_video.next_due + g_video.frame_ns)
     {
-        const int kMaxCatchUp = 4;
-        int       skipped     = 0;
-
-        while (skipped < kMaxCatchUp &&
-               g_video.have_first &&
-               now >= g_video.next_due + g_video.frame_ns)
-        {
-            if (!DecodeOne(g_video.spare))
-                break;
-            av_frame_unref(g_video.frame);
-            av_frame_move_ref(g_video.frame, g_video.spare);
-            g_video.next_due += g_video.frame_ns;
-            skipped++;
-        }
+        if (!DecodeOne(g_video.spare))
+            break;
+        av_frame_unref(g_video.frame);
+        av_frame_move_ref(g_video.frame, g_video.spare);
+        g_video.next_due += g_video.frame_ns;
+        skipped++;
     }
 
     const int w = g_video.frame->width;
@@ -438,7 +435,7 @@ int ReiPanMpegVideoGetPicture(sceMpeg *mp, sceIpuRGB32 *rgb32, int qwc)
 
     mp->width  = w;
     mp->height = h;
-    mp->frameCount++;
+    mp->frameCount += 1 + skipped;
 
     if (g_video.frame_ns <= 0.0)
         g_video.frame_ns = FrameRateNs(4);

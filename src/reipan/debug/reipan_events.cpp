@@ -117,18 +117,21 @@ using ReiPanUiLocale::UiText;
 namespace
 {
 
+// EVENT_OBJ and EVENT_DB_OBJ have edition-specific sizes and table lengths.
+// Keep the original event state capacity for compatibility with saved games.
+#ifdef REIPAN_SLPS_25544_CHS
+constexpr int kEventCount = 1780;
+constexpr u_int kPakSize   = 0x40a8c;
+constexpr int kChapterRoot = 87;
+constexpr int kRoomRoot    = 1059;
+#else
 constexpr int kEventCount = EV_EVENT_NUM;
-
-// EVENT_OBJ and EVENT_DB_OBJ are 0x40b30 bytes (ZERO3.FHD). Every offset read
-// out of the file is checked against it, so a stale or foreign block at the
-// address reads as "not resident" instead of a walk off the end.
 constexpr u_int kPakSize   = 0x40b30;
-constexpr u_int kPakHeader = EV_TBL_MAX * 4;
-constexpr u_int kPakTables = kPakHeader + EV_TBL_MAX * kEventCount * 4;
-
-// The tree's roots (the comment at the top).
 constexpr int kChapterRoot = 88;
 constexpr int kRoomRoot    = 1060;
+#endif
+constexpr u_int kPakHeader = EV_TBL_MAX * 4;
+constexpr u_int kPakTables = kPakHeader + EV_TBL_MAX * kEventCount * 4;
 
 // Condition labels: rows of the condition table (ev_change.c ev_cond_wrk,
 // tools/reverse/evtbl.py cond), which the streams store -- data, not the

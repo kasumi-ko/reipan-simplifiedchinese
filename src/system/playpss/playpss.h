@@ -57,6 +57,7 @@ void playPssStartNoWait(playPssReadFunc read, playPssRsrcs *rsrcs);  // FF3 0x00
 void playPssStart(playPssReadFunc read, playPssRsrcs *rsrcs);  // FF3 0x00272190
 int  playPssIsReady(void);                              // FF3 0x00272288: the first frame has decoded
 void playPssGetMpegInfo(PLAY_PSS_MPEG_INFO *info);     // FF3 0x002722c8
+int  playPssGetFrameIndex(void);                      // Zero-based film frame, -1 before the first picture.
 
 // One frame: 0 decoding, 1 end of stream or an error, 2 once a requested
 // stop has drained. playPssMain sends the picture to vram_adrs itself;

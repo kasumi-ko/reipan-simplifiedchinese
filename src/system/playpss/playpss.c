@@ -341,6 +341,11 @@ void playPssGetMpegInfo(PLAY_PSS_MPEG_INFO *info)
     info->height = playpss_mp.height;
 }
 
+int playPssGetFrameIndex(void)
+{
+    return playpss_mp.frameCount - 1;
+}
+
 // One frame of the inline path: decode a picture, send it (pTagEnd null: to
 // where setLoadImageTags was told, from the top left) or leave the chain
 // centred in 640x448 for the caller, keep the audio going, refill. In PAL the
