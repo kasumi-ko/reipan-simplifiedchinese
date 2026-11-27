@@ -9,6 +9,9 @@ ZERO3.FHD
 /data/
 /.reipan-data-*/
 
+# Local regression checklist
+/TODO.md
+
 # Regenerated reversing intermediates (Ghidra dumps, features, snapshots)
 tools/reverse/work/
 

@@ -1,94 +1,81 @@
-# ReiPan-SimplifiedChinese
+# ReiPan 简体中文版
 
-零～刺青之声～ PC 移植的简体中文适配，当前版本为 **0.1.0 beta**。
+ReiPan 是《零～刺青之声～ / Fatal Frame III: The Tormented》的 PS2 至 PC 原生移植项目。本仓库基于 Mikompilation 的 ReiPan，为 Windows 提供日版游戏的简体中文适配。[上游仓库](https://github.com/Mikompilation/ReiPan)
 
-简体中文适配作者为 **kasumi-ko (霞詩@bilibili)**。项目基于 Mikompilation 的 ReiPan，保留 GPL-3.0 许可证与上游署名。
+## 适用版本与维护状态
 
-[项目主页](https://github.com/kasumi-ko/reipan-simplifiedchinese) · [上游项目](https://github.com/Mikompilation/ReiPan) · [回归与发布清单](TODO.md)
+- 本分支仅提供 Windows 构建。
+- 游戏资源读取已转换为日版 NTSC-J，对应游戏编号 `SLPS-25544`，光盘启动文件为 `SLPS_255.44`。
+- 为了正常显示简体中文，**必须使用扑家汉化组制作的日版汉化 ISO**。本分支按该版本的字库、文字编码和资源布局适配。
+
+经测试，本简体中文适配版本已经可以完整体验游戏内容。
+
+本分支后续不再更新或维护。即使上游仓库继续更新，本分支也不会同步后续改动。
+
+## 游戏文件
+
+请自行准备上述扑家汉化组的汉化 ISO。可以在游戏数据选择界面指定该 ISO，或从光盘中提取游戏数据后选择对应目录。提取时应保留完整光盘目录结构，主要文件布局如下。
+
+```text
+ReiPan/
+├─ ReiPan.exe
+└─ binary/
+   ├─ IMG_BD.BIN
+   ├─ ZERO3.FHD
+   └─ SLPS_255.44
+```
+
+`IMG_BD.BIN` 与 `ZERO3.FHD` 需要放在同一目录。选定路径后，程序会将其保存在 `reipan.ini` 的 `[paths]` 配置项中。后续可通过设置菜单中的游戏数据文件夹选项修改路径。
 
 ## Windows 构建
 
-使用 MSYS2 MinGW64 的 GCC、CMake、Ninja 和 Git。CMake 会获取库依赖，Windows 的 FFmpeg 位于 `extern/ffmpeg`。
-
-```sh
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DREIPAN_COMPILE_SHADERS=OFF
-cmake --build build --target ReiPan
-```
-
-构建结果位于 `build/ReiPan/ReiPan-SimplifiedChinese.exe`。运行时需要同目录的 `resources` 和 FFmpeg DLL。
-
-## 准备游戏数据
-
-使用你自己的 `SLPS_255.44` 简体中文 ISO 和 Python 3.9 或更新版本。运行以下命令，在 EXE 旁生成 `data` 目录。
+准备 Windows C/C++ 编译工具链、CMake 3.20 或更新版本、Ninja 和 Git。依赖由 CMake 配置过程自动获取，Windows 使用 `extern/ffmpeg` 中提供的 FFmpeg 库。
 
 ```powershell
-python tools/prepare_slps25544.py "D:\Games\Fatal Frame III CHS.iso" build/ReiPan/data
+git clone --branch reipan-chinese https://github.com/kasumi-ko/reipan-simplifiedchinese.git
+cd reipan-simplifiedchinese
+
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DREIPAN_SLPS_25544_CHS=ON
+cmake --build build --target ReiPan --parallel
 ```
 
-工具以只读方式打开 ISO，根据同盘资源表生成适配文件，并找回 ISO 目录记录末尾之外的 95 项资源。输出目录需要约 2.74 GB 可用空间。程序自动识别同目录的 `data`，放在其他位置时可在游戏数据选择器中选择适配后的 `IMG_BD.BIN`。路径保存在 `reipan.ini`。
+生成的可执行文件位于 `build/ReiPan/ReiPan.exe`。`REIPAN_SLPS_25544_CHS=ON` 用于启用日版简体中文数据适配。运行时请保留随构建生成的资源与依赖文件。
 
-主菜单和暂停菜单的「设置」可打开移植版选项。默认用 WASD 移动、左 Shift 奔跑、鼠标右键举起相机、左键拍摄。F1 切换当次运行的调试栏。
+如需复用仓库内的着色器字节码，可在 CMake 配置命令中加入 `-DREIPAN_COMPILE_SHADERS=OFF`。
 
-## Graphics API
+## 图形与手柄
 
-ReiPan picks a graphics API by itself: Direct3D 12 on Windows, Vulkan on Linux,
-Metal on macOS. Choose another in **Options → Graphics → Graphics API** or
-**Settings → Graphics**, then restart. One that cannot be started falls back to
-the automatic choice. If one starts but misbehaves, set `backend = auto` under
-`[render]` in `reipan.ini`, or start ReiPan once with `SDL_GPU_DRIVER` set to
-`direct3d12`, `vulkan` or `metal`.
+Windows 默认使用 Direct3D 12。可以在图形设置中选择图形后端，并在修改后重新启动程序。
 
-## Gyro aiming
+举起射影机时，支持陀螺仪的手柄可通过转动手柄辅助瞄准。相关灵敏度、转动轴和反转选项可在控制设置中调整。
 
-While the Camera Obscura is raised, a controller with a gyro (DualShock 4,
-DualSense, Switch Pro, Steam Controller, ...) aims it by being turned, alongside
-the stick and the mouse. It is on by default; **Options → Controls → Gyro** sets
-the sensitivity, yaw or roll to turn, and the inversions. The gyro's drift is
-learned whenever the controller lies still with the Camera Obscura down.
+支持独立扳机马达的 Xbox 手柄可使用扳机震动。可在震动设置中调整强度及测试各个马达。
 
-## Trigger rumble
+## PS2 存档转移
 
-A controller with motors behind its triggers (Xbox One and later) also plays there
-what the rumble is for: heartbeats, blows, a ghost's grip, thunder and the
-cutscenes. The grips shake as the game asks, and any other controller behaves as
-before. It is on by default; **Options → Controls → Rumble** sets the strengths,
-tests each motor, and can add the Camera Obscura (the shutter, the charge and
-shutter chances), which the original does not shake for. A controller that Steam
-Input stands in for only has its grips.
+通过设置菜单中的 PS2 存档转移功能，可以导入或导出游戏存档。上游支持从提取的存档目录、8 MB 记忆卡以及 PSU、MAX、XPS、SPS、CBS 存档包导入，并可导出为以下格式。
 
-## PS2 save transfer
+- 带 ECC 的 `.ps2` 记忆卡。
+- 无 ECC 的 `.bin` 记忆卡。
+- `.psu`、`.max`、`.xps`、`.sps`、`.cbs` 存档包。
+- 提取的游戏存档目录。
 
-Open **Settings → PS2 save transfer…** to transfer European, US or Japanese
-gameplay saves. Choose the target region when exporting. For European PS2 saves,
-select the original game's PAL/60 Hz timing so mission time records remain correct.
+转移前请关闭游戏内的存档或读档界面。导入时选定目标槽位，导出时选定目标地区，随后通过游戏的正常读档入口加载。跨地区转换会受到原版游戏的脚本与场景差异限制，工具会显示具体原因。
 
-Import from an extracted save folder, an 8 MB memory card, or a PSU/MAX/XPS/SPS/CBS
-archive. Select saves and assign their destination slots. Export formats are:
+## 字体与界面
 
-- **ECC (.ps2):** a memory card with spare/ECC bytes, for PCSX2.
-- **Raw (.bin):** an 8 MB card without ECC bytes, for OPL.
-- **PSU (.psu):** an EMS archive, for uLaunchELF and PS2 save-transfer tools.
-- **MAX (.max):** an Action Replay MAX archive.
-- **XPS/SPS (.xps/.sps):** an X-Port V2 / SharkPort archive.
-- **CBS (.cbs):** a CodeBreaker archive.
-- **Extracted folder:** the game's save files, for tools that accept folders.
+游戏内的简体中文显示依赖扑家汉化组 ISO 中的字库与汉化资源。Port 界面使用的字体随程序资源提供。
 
-Archives contain this game's selected saves, not an entire memory card. Card
-exports create a blank card populated with the selected saves. Choosing a format
-opens its picker; confirming the destination exports immediately. Missing
-extensions are added automatically; existing output files/folders are refused.
-Imports replace only the selected destination slots. Load imported saves normally
-afterward, and close the game's save/load screen before transferring.
+高清字体替换文件需保留原字形布局、颜色和透明度，支持统一放大至 4 倍。将以字体指纹命名的目录复制到程序旁的 `resources/fonts/`，重新启动后，在设置中启用高清字体选项。
 
-Unavailable saves remain visible with an explanation; other valid slots can still
-be transferred. Regional script differences can prevent transferring an active
-scene or conversation. The extra US/Japanese Trailer unlock has no European
-equivalent and is left unobtained when exporting from ReiPan.
+## 致谢
 
-## Font texture replacements
+感谢 Mikompilation 及 ReiPan 原仓库的所有贡献者，为《零～刺青之声～ / Fatal Frame III: The Tormented》的 PC 原生移植提供基础。感谢扑家汉化组的汉化工作。[ReiPan 原仓库](https://github.com/Mikompilation/ReiPan)
 
-Redraw or upscale the PNGs uniformly up to 4×, preserving glyph layout, colours
-and transparency. Copy the hash-named directory into `resources/fonts/` beside
-the executable and restart. Enable **HD fonts (if available)** in Renderer or
-**Use HD Fonts when available** in Game options. Missing or unmatched files
-fall back to the original fonts.
+## 版权与许可
+
+《零～刺青之声～ / Fatal Frame III: The Tormented》原版作品的版权署名包括 **TECMO, LTD.（特库摩）**。《零》系列及其游戏名称、角色、剧情、美术、音乐、影像、原版程序和相关商标的权利归 **KOEI TECMO GAMES CO., LTD.（光荣特库摩）**及其他相应权利人所有。
+
+本项目为社区移植与简体中文适配项目。开源移植及适配代码遵循 GNU Affero General Public License v3.0，具体条款见仓库许可文件。[LICENSE](LICENSE)
+
+扑家汉化组制作的汉化文本与相关汉化资源保留原团队署名，相关权利归各自权利人所有。运行所需的 ISO 与光盘数据请自行准备。
