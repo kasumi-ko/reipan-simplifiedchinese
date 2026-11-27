@@ -46,6 +46,8 @@
 #include "reipan/reipan_ui/reipan_rml_gamefiles.h" // PC: ReiPan_RmlGameFilesTick
 #include "reipan/rendering/reipan_renderer.h" // PC: ReiPan_RendererEndFrame
 
+#include <SDL3/SDL_main.h>              // Windows GUI and console entry points
+
 // ──────────────────────────────────────────────────────────────────────
 // Statics / globals
 
@@ -641,7 +643,7 @@ static int GameMain(void)
 // then the game runs on its own thread while this one pumps window events, so
 // moving or resizing the window no longer stops the game.
 
-int main(void)
+int main(int, char **)
 {
     ReiPan_LogInit();
     return ReiPan_HostMain(GameMain);

@@ -16,7 +16,7 @@ ReiPan 是《零～刺青之声～ / Fatal Frame III: The Tormented》的 PS2 �
 
 ```text
 ReiPan/
-├─ ReiPan.exe
+├─ ReiPan-SimplifiedChinese.exe
 └─ binary/
    ├─ IMG_BD.BIN
    ├─ ZERO3.FHD
@@ -30,14 +30,14 @@ ReiPan/
 准备 Windows C/C++ 编译工具链、CMake 3.20 或更新版本、Ninja 和 Git。依赖由 CMake 配置过程自动获取，Windows 使用 `extern/ffmpeg` 中提供的 FFmpeg 库。
 
 ```powershell
-git clone --branch reipan-chinese https://github.com/kasumi-ko/reipan-simplifiedchinese.git
-cd reipan-simplifiedchinese
+git clone https://github.com/kasumi-ko/ReiPan-SimplifiedChinese.git
+cd ReiPan-SimplifiedChinese
 
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DREIPAN_SLPS_25544_CHS=ON
 cmake --build build --target ReiPan --parallel
 ```
 
-生成的可执行文件位于 `build/ReiPan/ReiPan.exe`。`REIPAN_SLPS_25544_CHS=ON` 用于启用日版简体中文数据适配。运行时请保留随构建生成的资源与依赖文件。
+生成的可执行文件位于 `build/ReiPan/ReiPan-SimplifiedChinese.exe`。`REIPAN_SLPS_25544_CHS=ON` 用于启用日版简体中文数据适配。运行时请保留随构建生成的资源与依赖文件。发行构建直接打开游戏窗口，诊断信息写入用户数据目录下的 `reipan.log`。
 
 如需复用仓库内的着色器字节码，可在 CMake 配置命令中加入 `-DREIPAN_COMPILE_SHADERS=OFF`。
 

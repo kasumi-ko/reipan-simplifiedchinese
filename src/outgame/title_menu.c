@@ -11,7 +11,7 @@
  *  children: Title_Top (15) waits for START / OK (-> 17) or 30 s (-> 16);
  *  Title_Move_Movie (16) plays movie 0x18 through phase 67 and comes back to
  *  15; Title_Menu (17) moves cursor 0x11 over new game / load game / album /
- *  option / video (-> 51, 9, 8, 7, 18); Title_NewGame (51) picks the
+ *  option (-> 51, 9, 8, 7); Title_NewGame (51) picks the
  *  difficulty (-> 9 Story_Main).
  *
  *  FF3 reads the singletons through gp-relative cached pointers; nothing
@@ -53,9 +53,12 @@
 // Menu cursors.
 enum
 {
-    TITLE_CSR_MENU = 0x11,              // title menu: new game, load game, album, option, video
+    TITLE_CSR_MENU = 0x11,              // title menu: new game, load game, album, option
     TITLE_CSR_DIFF = 0x33,              // difficulty: easy, normal, hard, nightmare
 };
+
+static const char *const title_menu_sprites[] = { "R newgame", "R loadgame", "R albm", "R opt" };
+static constexpr int title_menu_count = sizeof(title_menu_sprites) / sizeof(title_menu_sprites[0]);
 
 // System SEs (SYS_BASE_BD) and the menu start bank's SE.
 enum
@@ -185,7 +188,6 @@ void TitleMenuDecide(int pos)
         AlbumSetIngame(0, 0);
         break;
     case 3:                             // option
-    case 4:                             // video
         title_start_flg.mode = 0;
         break;
     default:
@@ -259,10 +261,6 @@ static void TitleDrawSprite(int handle, const char *name, int x, int y, u_int rg
 // callcheck: B2dDrawSpriteByName (TitleDrawSprite)
 static int TitleMenuItemDrawCallback(const B2D_HOOK_ARGS *args)
 {
-    static const char *const names[5] =     // data 0x3634a8
-    {
-        "R newgame", "R loadgame", "R albm", "R opt", "R Video",
-    };
     const int *xy     = (const int *)args->t1;
     u_int      rgb    = (u_int)args->t3;
     float      alpha  = (float)(int)args->stack[2] * (1.0f / 128.0f);   /* sdata 0x372708 */
@@ -276,18 +274,18 @@ static int TitleMenuItemDrawCallback(const B2D_HOOK_ARGS *args)
 
     obj  = title_menu_obj;
     item = obj->slot[obj->cur];
-    if ((u_int)item < 5 && names[item] != nullptr)
+    if ((u_int)item < title_menu_count)
     {
         int fade = (int)((float)obj->GetFade() * obj->scale);
-        TitleDrawSprite(handle, names[item], xy[0], xy[1], rgb, (float)fade * (1.0f / 128.0f) * alpha);
+        TitleDrawSprite(handle, title_menu_sprites[item], xy[0], xy[1], rgb, (float)fade * (1.0f / 128.0f) * alpha);
         obj = title_menu_obj;
     }
 
     item = obj->slot[obj->cur ^ 1];
-    if ((u_int)item < 5 && names[item] != nullptr)
+    if ((u_int)item < title_menu_count)
     {
         int fade = (int)((float)(obj->fade_max - obj->GetFade()) * obj->scale);
-        TitleDrawSprite(handle, names[item], xy[0], xy[1], rgb, (float)fade * (1.0f / 128.0f) * alpha);
+        TitleDrawSprite(handle, title_menu_sprites[item], xy[0], xy[1], rgb, (float)fade * (1.0f / 128.0f) * alpha);
     }
 
     SetDefaultGsDrawState();
@@ -383,7 +381,7 @@ int init_Title_Mode(void)
             title_bgm_load = 1;
         }
         pad_wrk[0].stick_dpad = 1;
-        MenuCsrInit(TITLE_CSR_MENU, 5, 1, 0);
+        MenuCsrInit(TITLE_CSR_MENU, title_menu_count, 1, 0);
         MenuCsrInitWithFilter(TitleNewGameCsrFilter, TITLE_CSR_DIFF, 4, 1, 3);
         title_menu_obj = new TITLE_MENU_OBJ;
         title_menu_obj->len    = 8;
@@ -460,8 +458,8 @@ int end_Title_Mode(void)
     {
         delete title_menu_obj;
     }
-    // Option (3) and video (4) keep the title BGM playing.
-    if ((u_int)(MenuCsrGetPos(TITLE_CSR_MENU) - 3) > 1)
+    // Options keeps the title BGM playing.
+    if (MenuCsrGetPos(TITLE_CSR_MENU) != 3)
         SndBgmStop(GetPALMode() ? 25 : 30, 0);
     TitleObjDelete();
     MenuCsrRelease(TITLE_CSR_DIFF);
@@ -685,9 +683,8 @@ static void TitleMenuMouse(const char *arrows)
 // callcheck: GetLanguage, GetSysWrk, BpCtlGetHandleByFileNo (TitleLayoutHandle)
 int one_Title_Menu(void)
 {
-    // Phase of each item (stack copy of the five halfwords): Title_NewGame,
-    // Story_Main (load game), 8 (album), Option_Main, Title_FrameRate_Sel.
-    static const short next[5] = { 51, 9, 8, 7, 18 };
+    // Title_NewGame, Story_Main (load game), album and Option_Main.
+    static const short next[title_menu_count] = { 51, 9, 8, 7 };
     int pos;
 
     // PC: Options is the port's RmlUi options screen (reipan_rml_options.h)
@@ -704,6 +701,8 @@ int one_Title_Menu(void)
     if (CheckPadTrgPlaySe((u_short)pad_key[PAD_KEY_OK], -1, 0))
     {
         pos = MenuCsrGetPos(TITLE_CSR_MENU);
+        if ((u_int)pos >= title_menu_count)
+            return 0;
         if (pos == 3 && ReiPan_RmlOptionsOpen(REIPAN_RML_OPTIONS_FROM_TITLE))  // PC
             return 0;
         GetGPhaseCtrl()->SetNext(next[pos], 0);
