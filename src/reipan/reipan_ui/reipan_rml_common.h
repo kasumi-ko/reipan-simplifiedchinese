@@ -6,6 +6,7 @@
 
 #include <functional>
 #include <string>
+#include <string_view>
 
 namespace Rml
 {
@@ -24,7 +25,7 @@ void PlayDecide();
 void PlayCancel();
 
 /* `text` made safe to put inside RML. */
-std::string Escape(const std::string &text);
+std::string Escape(std::string_view text);
 
 /* One button prompt: what the key is on the keyboard, which pad button it is
  * (and a second, for a pair like L1 / R1), and what it does.  `id` names the

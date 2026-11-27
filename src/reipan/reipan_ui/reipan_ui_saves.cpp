@@ -16,6 +16,7 @@ namespace ReiPanUiSaves
 {
 namespace
 {
+using ReiPanUiLocale::Translate;
 using ReiPanUiLocale::UiText;
 
 namespace fs = std::filesystem;
@@ -411,7 +412,7 @@ void Browse(SDL_Window* window, Dialog dialog)
             &request, true))
     {
         picking.store(false, std::memory_order_release);
-        message = std::string("Cannot open file picker: ") + SDL_GetError();
+        message = std::string(UiText("Cannot open file picker: ")) + SDL_GetError();
     }
 }
 void AdoptPicker()
@@ -509,11 +510,11 @@ void Commit()
     if (TransferBatch(source, target, slots, exporting, fs::u8path(output),
                       error, output_ecc, output_archive, Options(output_region)))
     {
-        message = (exporting ? "Exported " : "Imported ")
-                  + std::to_string(slots.size()) + " save(s).";
+        message = (exporting ? UiText("Exported ") : UiText("Imported "))
+                  + std::to_string(slots.size()) + UiText(" save(s).");
         if (exporting && ps2_kind != StorageKind::Folder)
         {
-            message += " New card: " + std::string(output);
+            message += UiText(" New card: ") + std::string(output);
             SetText(external, sizeof(external), output);
             ps2_kind = StorageKind::Card;
             SuggestOutput();
@@ -521,7 +522,7 @@ void Commit()
         if (!exporting)
         {
             message +=
-                " Current session unchanged; load the imported save normally.";
+                UiText(" Current session unchanged; load the imported save normally.");
         }
         if (!error.empty())
         {
@@ -534,7 +535,7 @@ void Commit()
     }
     else
     {
-        message = "Transfer failed: " + error;
+        message = UiText("Transfer failed: ") + std::string(Translate(error));
     }
 }
 void DestinationChoice(int i)
@@ -667,7 +668,7 @@ void Rows(bool is_source)
         else if (preview.occupied)
         {
             ImGui::TextUnformatted(preview.player.c_str());
-            ImGui::Text("Chapter %u / Room %d", preview.chapter, preview.area);
+            ImGui::Text(UiText("Chapter %u / Room %d"), preview.chapter, preview.area);
             ImGui::TextDisabled("%02u:%02u:%02u", preview.hours,
                                 preview.minutes, preview.seconds);
         }
@@ -748,7 +749,7 @@ bool ChoiceCard(const char* label, float width, float height = 110.f)
     ImGui::PopStyleColor();
     ImGui::PopStyleVar(2);
     const ImVec2 origin = ImGui::GetItemRectMin();
-    const std::string text(label);
+    const std::string text(Translate(label));
     const size_t split = text.find("\n\n");
     const std::string title = text.substr(0, split);
     const std::string description =
@@ -829,7 +830,7 @@ void Draw(SDL_Window* window)
     const int page = step == Step::Operation ? 1
                      : exporting             ? int(step)
                                              : int(step) + 1;
-    ImGui::Text("Step %d of %d: %s", page, exporting ? 4 : 3,
+    ImGui::Text(UiText("Step %d of %d: %s"), page, exporting ? 4 : 3,
                 titles[int(step)]);
     ImGui::Separator();
     ImGui::BeginDisabled(picking.load());
@@ -898,11 +899,11 @@ void Draw(SDL_Window* window)
     else if (step == Step::Slots)
     {
         ImGui::TextUnformatted(
-            "Select source saves, then choose a destination slot for each.");
+            UiText("Select source saves, then choose a destination slot for each."));
         if (!exporting && source_ok)
         {
-            ImGui::Text("%s -> %s", RegionLabel(source.save.region),
-                        RegionLabel(SaveRegion::EU));
+            ImGui::Text("%s -> %s", Translate(RegionLabel(source.save.region)).data(),
+                        Translate(RegionLabel(SaveRegion::EU)).data());
             if (source.save.region == SaveRegion::EU)
             {
                 ImGui::SetNextItemWidth(260.f);
@@ -921,7 +922,7 @@ void Draw(SDL_Window* window)
                                                 [](const SlotInfo& slot) {
                                                     return slot.occupied && slot.issue.empty();
                                                 }));
-        ImGui::Text("%d of %d saves selected", count, available);
+        ImGui::Text(UiText("%d of %d saves selected"), count, available);
         ImGui::SameLine();
         if (ImGui::SmallButton(UiText("Select all")))
         {
@@ -971,10 +972,12 @@ void Draw(SDL_Window* window)
         for (auto region : {SaveRegion::JP, SaveRegion::US, SaveRegion::EU})
         {
             const std::string label =
-                std::string(RegionLabel(region)) + "\n\n"
+                std::string(Translate(RegionLabel(region))) + "\n\n"
                 + (region == SaveRegion::EU
-                       ? "PAL release (50 or 60 Hz)"
-                       : region == SaveRegion::JP ? "Japanese release; conservative compatibility checks" : "US release");
+                       ? UiText("PAL release (50 or 60 Hz)")
+                       : region == SaveRegion::JP
+                             ? UiText("Japanese release; conservative compatibility checks")
+                             : UiText("US release"));
             if (ChoiceCard(label.c_str(), width, 90.f))
             {
                 const auto before = Mappings().size();
@@ -998,7 +1001,7 @@ void Draw(SDL_Window* window)
     }
     else if (step == Step::Format)
     {
-        ImGui::Text("Region: %s", RegionLabel(output_region));
+        ImGui::Text(UiText("Region: %s"), Translate(RegionLabel(output_region)).data());
         if (output_region == SaveRegion::EU)
         {
             ImGui::SetNextItemWidth(220.f);
@@ -1007,13 +1010,13 @@ void Draw(SDL_Window* window)
         const auto notes = RegionNotice(SaveRegion::EU, output_region);
         if (!notes.empty())
         {
-            ImGui::TextWrapped("%s", notes.c_str());
+            ImGui::TextWrapped("%s", Translate(notes).data());
         }
-        ImGui::TextUnformatted("Choose the output format");
+        ImGui::TextUnformatted(UiText("Choose the output format"));
         ImGui::TextWrapped(
-            "Choose a format, then confirm the destination in the file picker "
+            UiText("Choose a format, then confirm the destination in the file picker "
             "to "
-            "export immediately.");
+            "export immediately."));
         ImGui::Spacing();
         const float width = ImGui::GetContentRegionAvail().x;
         const float height =
@@ -1058,8 +1061,8 @@ void Draw(SDL_Window* window)
             format = 6;
         }
         ImGui::TextWrapped(
-            "Save archives contain this game's selected saves, not a whole "
-            "memory card.");
+            UiText("Save archives contain this game's selected saves, not a whole "
+            "memory card."));
         if (format >= 0)
         {
             message.clear();
@@ -1171,7 +1174,7 @@ void Draw(SDL_Window* window)
                              ImGuiCond_Appearing);
     if (ImGui::BeginPopupModal(UiText("Save transfer message"), nullptr, ImGuiWindowFlags_AlwaysAutoResize))
     {
-        ImGui::TextWrapped("%s", message.c_str());
+        ImGui::TextWrapped("%s", Translate(message).data());
         if (ImGui::Button(UiText("OK"), ImVec2(120, 0)) || ImGui::IsKeyPressed(ImGuiKey_Escape))
         {
             message.clear();

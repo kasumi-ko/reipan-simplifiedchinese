@@ -173,22 +173,22 @@ void EventContextMenu(int id)
     {
         ReiPanEvents::ForceStart(id);
     }
-    Tooltip("Run it without its open conditions -- the ROM's forced start\n"
+    Tooltip(UiText("Run it without its open conditions -- the ROM's forced start\n"
             "(EV_SET_STATE 1), applied in the next frame's event pass.\n"
-            "What it expects (a room, a ghost, an NPC) is not set up for it.");
+            "What it expects (a room, a ghost, an NPC) is not set up for it."));
     if (ImGui::MenuItem(UiText("Mark as ended"), nullptr, false,
                         in_game && !running && state != EV_STATE_END && state != EV_STATE_LOCK))
     {
         ReiPanEvents::ForceEnd(id);
     }
-    Tooltip("Set it to ended without running it, so whatever waits on it\n"
-            "can go ahead.");
+    Tooltip(UiText("Set it to ended without running it, so whatever waits on it\n"
+            "can go ahead."));
     if (ImGui::MenuItem(UiText("Waiting again"), nullptr, false, in_game && !running && state != EV_STATE_WAIT_OPEN))
     {
         ReiPanEvents::Rearm(id);
     }
-    Tooltip("Put it back to waiting for its open conditions, so it can\n"
-            "happen again.");
+    Tooltip(UiText("Put it back to waiting for its open conditions, so it can\n"
+            "happen again."));
     ImGui::Separator();
     if (ImGui::MenuItem(UiText("Copy id")))
     {
@@ -242,7 +242,7 @@ void EventCells(const Rows &rows, int id)
     ImGui::EndDisabled();
     if (!ev.go.Known())
     {
-        Tooltip("Its conditions name no place to go to.");
+        Tooltip(UiText("Its conditions name no place to go to."));
     }
     else if (!rows.can_go)
     {
@@ -621,8 +621,8 @@ void DrawDetails(const Catalogue &cat)
     {
         ImGui::SetClipboardText(copy.c_str());
     }
-    Tooltip("Copy all of this, the judgement included, to paste in a note\n"
-            "or a bug report.");
+    Tooltip(UiText("Copy all of this, the judgement included, to paste in a note\n"
+            "or a bug report."));
     ImGui::SameLine();
     if (ImGui::SmallButton(UiText("Parent")) && ev.parent >= 0)
     {
@@ -683,8 +683,8 @@ void DrawHeader()
             {
                 ReiPanEvents::Proceed();
             }
-            Tooltip("Do not wait for the event program that is running. The\n"
-                    "room change cuts it short, so expect it to misbehave.");
+            Tooltip(UiText("Do not wait for the event program that is running. The\n"
+                    "room change cuts it short, so expect it to misbehave."));
             ImGui::SameLine();
         }
         if (ImGui::SmallButton(UiText("Cancel")))
@@ -743,8 +743,8 @@ void ReiPan_EventsDrawWindow(bool *open)
     ImGui::InputTextWithHint("##filter", UiText("Filter: ev438, movie, area 47, examine..."), g_filter, sizeof(g_filter));
     ImGui::SameLine();
     ImGui::Checkbox(UiText("Hide flags"), &g_hide_flags);
-    Tooltip("Hide events with no program and no sub-events: markers other\n"
-            "events test, with nothing to see.");
+    Tooltip(UiText("Hide events with no program and no sub-events: markers other\n"
+            "events test, with nothing to see."));
     if (!cat->from_memory)
     {
         ImGui::SameLine();
@@ -768,8 +768,8 @@ void ReiPan_EventsDrawWindow(bool *open)
         }
         if (ImGui::BeginTabItem(UiText("Rooms")))
         {
-            ImGui::TextDisabled("Examine points, doors and pick-ups, a group per area. They run in "
-                                "every Hour; their conditions say which.");
+            ImGui::TextDisabled(UiText("Examine points, doors and pick-ups, a group per area. They run in "
+                                "every Hour; their conditions say which."));
             ImGui::BeginChild("##rooms");
             DrawTreeTab(rows, cat->room_root, "##room_events");
             ImGui::EndChild();

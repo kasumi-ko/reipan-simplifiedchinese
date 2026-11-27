@@ -1356,7 +1356,7 @@ std::string RowRml(const Row &row, int page, int index)
     const std::string id = RowId(page, index);
     if (row.kind == RowKind::Heading)
     {
-        return "<div class=\"heading\" id=\"" + id + "\">" + Escape(row.label) +
+        return "<div class=\"heading\" id=\"" + id + "\">" + Escape(Translate(row.label)) +
                "</div>";
     }
 
@@ -1365,11 +1365,11 @@ std::string RowRml(const Row &row, int page, int index)
                                                      : "action";
     std::string rml = "<div class=\"row selectable " + std::string(kind) +
                       "\" id=\"" + id + "\"><span class=\"row-label\">" +
-                      Escape(row.label) + "</span><span class=\"row-value\">";
+                      Escape(Translate(row.label)) + "</span><span class=\"row-value\">";
     if (row.kind == RowKind::Action)
     {
         rml += "<span class=\"value action-value\" id=\"" + id + "-value\">" +
-               Escape(row.action) + "</span>";
+               Escape(Translate(row.action)) + "</span>";
     }
     else
     {
@@ -1404,7 +1404,7 @@ void BuildPages()
     {
         const Page &page = g_opt.pages[p];
         tabs += "<span class=\"tab\" id=\"tab-" + std::to_string(p) + "\">" +
-                Escape(page.name) + "</span>";
+                Escape(Translate(page.name)) + "</span>";
         pages += "<div class=\"page hidden\" id=\"page-" + std::string(page.id) +
                  "\">";
         for (int r = 0; r < (int)page.rows.size(); r++)
@@ -1576,7 +1576,7 @@ void RefreshRow(Row &row)
     const std::string text = ValueText(row);
     if (row.value != nullptr && text != row.shown_value)
     {
-        row.value->SetInnerRML(ReiPanRmlCommon::Escape(text));
+        row.value->SetInnerRML(ReiPanRmlCommon::Escape(Translate(text)));
         row.shown_value = text;
     }
     if (row.fill != nullptr)

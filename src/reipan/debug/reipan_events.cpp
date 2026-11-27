@@ -80,6 +80,7 @@
  *  the status line says which, and Proceed() overrides it.
  * ======================================================================== */
 #include "reipan/debug/reipan_events.h"
+#include "reipan/reipan_ui/reipan_ui_locale.h"
 
 #include "graphics/graph2d/fade.h"              // fade_ctrl, FadeInReq
 #include "ingame/event/prg/ev_change.h"         // GetEvState, CompulsionSetEventState, GetEvCondWrk, EV_STATE_*
@@ -111,6 +112,8 @@
 
 namespace ReiPanEvents
 {
+using ReiPanUiLocale::UiText;
+
 namespace
 {
 
@@ -502,15 +505,15 @@ std::string Format(const char *fmt, ...)
 
 std::string AreaText(int area)
 {
-    return Format(WorldOf(area) == 1 ? "area %d (house)" : "area %d", area);
+    return Format(WorldOf(area) == 1 ? UiText("area %d (house)") : UiText("area %d"), area);
 }
 
 std::string PlaceText(const Place &place)
 {
     if (place.label >= 0)
     {
-        return place.area >= 0 ? Format("rect %d, ", place.label) + AreaText(place.area)
-                               : Format("rect %d", place.label);
+        return place.area >= 0 ? Format(UiText("rect %d, "), place.label) + AreaText(place.area)
+                               : Format(UiText("rect %d"), place.label);
     }
     return place.area >= 0 ? AreaText(place.area) : "";
 }
@@ -1146,7 +1149,7 @@ struct Job
 };
 
 Job                                g_job;
-std::string                        g_status = "Pick an Hour or an event.";
+std::string                        g_status = UiText("Pick an Hour or an event.");
 std::vector<std::function<void()>> g_commands;  // window buttons, run at the next frame's top
 
 void SetStage(Stage stage)
@@ -1482,7 +1485,7 @@ void Teleport(const Place &place)
     g_job.dest = place;
     ReiPan_WarpGoTo(&spot);
     SetStage(Stage::Moving);
-    g_status = "Going to " + PlaceText(place) + "...";
+    g_status = Format(UiText("Going to %s..."), PlaceText(place).c_str());
 }
 
 // Blocked only by an event program? Say which and let Proceed() through.
@@ -1496,7 +1499,7 @@ bool HeldByEvents()
         return false;
     }
     g_job.waiting_on_events = true;
-    g_status = busy >= 0 ? Format("Waiting for ev%d to finish before teleporting.", busy)
+    g_status = busy >= 0 ? Format(UiText("Waiting for ev%d to finish before teleporting."), busy)
                          : std::string("Waiting for a message to close before teleporting.");
     return true;
 }
@@ -1549,7 +1552,7 @@ void StepTeleport()
 {
     if (!ReiPan_WarpInPlay())
     {
-        g_status = "Waiting for normal play...";
+        g_status = UiText("Waiting for normal play...");
         return;
     }
     if (HeldByEvents())
@@ -1586,7 +1589,7 @@ void StepAdvance()
     }
     if (!ReiPan_WarpInPlay())
     {
-        g_status = "Waiting for normal play...";
+        g_status = UiText("Waiting for normal play...");
         return;
     }
 
@@ -1647,7 +1650,7 @@ void StepAdvance()
             Teleport(aim);
             return;
         }
-        g_status = Format("Waiting for ev%d to open: %s.", node, Ev(node).trigger.c_str());
+        g_status = Format(UiText("Waiting for ev%d to open: %s."), node, Ev(node).trigger.c_str());
         return;
     }
 
@@ -1675,7 +1678,7 @@ void StepAdvance()
     {
         Release();
     }
-    g_status = Format("At ev%d -- waiting for it: %s.", target, Ev(target).trigger.c_str());
+    g_status = Format(UiText("At ev%d -- waiting for it: %s."), target, Ev(target).trigger.c_str());
     if (++g_job.at_frames == 1 || g_job.at_frames == 50)
     {
         LogJudged(target);
@@ -1689,7 +1692,7 @@ void Begin(Kind kind, int chapter, int target, Stage stage)
     g_job.chapter = chapter;
     g_job.target  = target;
     SetStage(stage);
-    g_status = std::string("Starting ") + ChapterName(chapter) + "...";
+    g_status = Format(UiText("Starting %s..."), ChapterName(chapter));
 }
 
 // REIPAN_EVENT="chapter:2,jump:500,go:1061": asked for at boot, one after
@@ -1790,7 +1793,7 @@ void Step()
         }
         if (!ReiPan_WarpIdle())
         {
-            g_status = std::string("Starting ") + ChapterName(g_job.chapter) + ": " + ReiPan_WarpStatus();
+            g_status = Format(UiText("Starting %s: "), ChapterName(g_job.chapter)) + ReiPan_WarpStatus();
             break;
         }
         if (CurrentChapter() != g_job.chapter)
@@ -1813,7 +1816,7 @@ void Step()
         // begun.
         if (GetCatalogue() == nullptr)
         {
-            g_status = std::string("Starting ") + ChapterName(g_job.chapter) + ": waiting for play...";
+            g_status = Format(UiText("Starting %s: waiting for play..."), ChapterName(g_job.chapter));
             break;
         }
 
@@ -1821,7 +1824,7 @@ void Step()
         const int state = entry >= 0 ? GetEvState(entry) : EV_STATE_END;
         if ((state != EV_STATE_END && state != EV_STATE_LOCK) || (entry >= 0 && CheckEventExeEntry(entry) == 1))
         {
-            g_status = Format("Waiting for ev%d, the start of %s, to end...", entry, ChapterName(g_job.chapter));
+            g_status = Format(UiText("Waiting for ev%d, the start of %s, to end..."), entry, ChapterName(g_job.chapter));
             if (g_job.frames > 25 * 120)
             {
                 Finish(Format("ev%d, the start of %s, never ended (%s).", entry, ChapterName(g_job.chapter),
@@ -1836,7 +1839,7 @@ void Step()
         }
         FastForward();
         SetStage(Stage::Advance);
-        g_status = Format("Heading for ev%d...", g_job.target);
+        g_status = Format(UiText("Heading for ev%d..."), g_job.target);
         break;
     }
 
@@ -1853,7 +1856,7 @@ void Step()
         }
         if (!ReiPan_WarpIdle())
         {
-            g_status = Format("Loading %s for ev%d: ", PlaceText(go).c_str(), g_job.target) + ReiPan_WarpStatus();
+            g_status = Format(UiText("Loading %s for ev%d: "), PlaceText(go).c_str(), g_job.target) + ReiPan_WarpStatus();
             break;
         }
         if (CurrentChapter() != g_job.chapter)
@@ -1891,10 +1894,10 @@ void Step()
         }
         if (!ready)
         {
-            g_status = Format("Waiting for ev%d, %s, to open...", chapter_event, ChapterName(g_job.chapter));
+            g_status = Format(UiText("Waiting for ev%d, %s, to open..."), chapter_event, ChapterName(g_job.chapter));
             if (g_job.frames > 25 * 60)
             {
-                Finish(Format("ev%d, %s, never opened.", chapter_event, ChapterName(g_job.chapter)));
+                Finish(Format(UiText("ev%d, %s, never opened."), chapter_event, ChapterName(g_job.chapter)));
             }
             break;
         }
@@ -1903,7 +1906,7 @@ void Step()
             Replay(EntryOf(g_job.chapter), WorldOf(Ev(g_job.target).go.area));
         }
         SetStage(Stage::Advance);
-        g_status = Format("Heading for ev%d...", g_job.target);
+        g_status = Format(UiText("Heading for ev%d..."), g_job.target);
         break;
     }
 
@@ -1914,7 +1917,7 @@ void Step()
     case Stage::Moving:
         if (!ReiPan_WarpIdle() || !ReiPan_WarpInPlay())
         {
-            g_status = std::string("Going to ") + PlaceText(g_job.dest) + ": " + ReiPan_WarpStatus();
+            g_status = Format(UiText("Going to %s: "), PlaceText(g_job.dest).c_str()) + ReiPan_WarpStatus();
             if (g_job.frames > 25 * 120)
             {
                 Finish(std::string("The move did not finish: ") + ReiPan_WarpStatus());
@@ -2020,7 +2023,7 @@ void JumpToEvent(int id)
     const Event &ev = Ev(id);
     if (ev.chapter < 0)
     {
-        g_status = Format("ev%d is in no chapter's tree; Go takes the player to it.", id);
+        g_status = Format(UiText("ev%d is in no chapter's tree; Go takes the player to it."), id);
         return;
     }
     // The chapter event and its start event are the chapter's start. Any
@@ -2045,7 +2048,7 @@ void TeleportToEvent(int id)
     const Place place = Ev(id).go;
     if (!place.Known())
     {
-        g_status = Format("ev%d names no place to go to.", id);
+        g_status = Format(UiText("ev%d names no place to go to."), id);
         return;
     }
     g_job        = Job{};
@@ -2053,7 +2056,7 @@ void TeleportToEvent(int id)
     g_job.target = id;
     g_job.dest   = place;
     SetStage(Stage::Advance);
-    g_status = "Going to " + PlaceText(place) + "...";
+    g_status = Format(UiText("Going to %s..."), PlaceText(place).c_str());
 }
 
 // The parked queue only takes an event that is waiting or done and off the
@@ -2065,7 +2068,7 @@ void ForceStart(int id)
     {
         g_commands.push_back([id]() {
             Req_CompulsionSetEventState(id, id, EV_STATE_INIT);
-            g_status = Format("ev%d will start in the next event pass.", id);
+            g_status = Format(UiText("ev%d will start in the next event pass."), id);
         });
     }
 }
@@ -2075,7 +2078,7 @@ void ForceEnd(int id)
     if (ReiPan_WarpInGame() && GetCatalogue() != nullptr && id >= 0 && id < kEventCount)
     {
         g_commands.push_back([id]() {
-            g_status = Force(id, EV_STATE_END) ? Format("ev%d marked as ended.", id)
+            g_status = Force(id, EV_STATE_END) ? Format(UiText("ev%d marked as ended."), id)
                                                : Format("ev%d is running; it was left alone.", id);
         });
     }
@@ -2087,7 +2090,7 @@ void Rearm(int id)
     {
         g_commands.push_back([id]() {
             Req_CompulsionSetEventState(id, id, EV_STATE_WAIT_OPEN);
-            g_status = Format("ev%d will be waiting again from the next event pass.", id);
+            g_status = Format(UiText("ev%d will be waiting again from the next event pass."), id);
         });
     }
 }
@@ -2136,23 +2139,23 @@ const char *StateName(int state)
     switch (state)
     {
     case EV_STATE_WAIT_OPEN:
-        return "waiting";
+        return UiText("waiting");
     case EV_STATE_INIT:
-        return "starting";
+        return UiText("starting");
     case EV_STATE_EXE:
-        return "running";
+        return UiText("running");
     case EV_STATE_WAIT_END:
-        return "closing";
+        return UiText("closing");
     case EV_STATE_SUSPEND:
-        return "parked";
+        return UiText("parked");
     case EV_STATE_END:
-        return "done";
+        return UiText("done");
     case EV_STATE_LOCK:
-        return "sealed";
+        return UiText("sealed");
     case 7:
-        return "until waking";
+        return UiText("until waking");
     case 8:
-        return "until the dream";
+        return UiText("until the dream");
     default:
         return "";
     }

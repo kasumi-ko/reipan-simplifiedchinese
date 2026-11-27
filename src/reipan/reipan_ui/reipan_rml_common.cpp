@@ -1,5 +1,6 @@
 #include "reipan_rml_common.h"
 #include "reipan_rmlui.h"
+#include "reipan_ui_locale.h"
 
 #include "ingame/sound/snd_ctrl.h"      // SndSePlay
 
@@ -36,7 +37,7 @@ void PlayCancel()
     PlaySe(kSeCancel);
 }
 
-std::string Escape(const std::string &text)
+std::string Escape(std::string_view text)
 {
     std::string out;
     out.reserve(text.size());
@@ -79,9 +80,9 @@ std::string PromptsRml(const Prompt *prompts, int count)
             key += ReiPanRml::PadButtonName(prompt.pad_pair);
         }
         rml += "><span class=\"key\">";
-        rml += Escape(key);
+        rml += Escape(ReiPanUiLocale::Translate(key));
         rml += "</span>";
-        rml += Escape(prompt.action);
+        rml += Escape(ReiPanUiLocale::Translate(prompt.action));
         rml += "</span>";
     }
     return rml;

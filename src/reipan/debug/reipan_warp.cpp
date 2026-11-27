@@ -1501,9 +1501,9 @@ void DrawWarp()
     }
     if (ImGui::IsItemHovered())
     {
-        ImGui::SetTooltip("ingame_wrk.b01 at the start. The chapter's event (under event 88)\n"
+        ImGui::SetTooltip(UiText("ingame_wrk.b01 at the start. The chapter's event (under event 88)\n"
                           "opens and runs its start event, the developers' chapter select:\n"
-                          "it moves the world, the area and Rei as the story would.");
+                          "it moves the world, the area and Rei as the story would."));
     }
     const ChapterStart &cs = kChapterStart[std::clamp(g_ui.chapter, 0, kChapterMax)];
     ImGui::TextDisabled(UiText("start event %d: %s"), cs.entry, cs.where);
@@ -1548,9 +1548,9 @@ void DrawWarp()
     }
     if (ImGui::IsItemHovered())
     {
-        ImGui::SetTooltip("EVENT_DB_OBJ instead of EVENT_OBJ: the developers' debug start\n"
+        ImGui::SetTooltip(UiText("EVENT_DB_OBJ instead of EVENT_OBJ: the developers' debug start\n"
                           "event 1746 opens instead of 1060 (fade in, control, camera\n"
-                          "unlocked, random ghosts on). Everything else is the same file.");
+                          "unlocked, random ghosts on). Everything else is the same file."));
     }
     ImGui::SameLine();
     if (ImGui::Checkbox(UiText("Stop events"), &stop))
@@ -1559,9 +1559,9 @@ void DrawWarp()
     }
     if (ImGui::IsItemHovered())
     {
-        ImGui::SetTooltip("EventSetStop(1): no event program or condition runs (NPCs, the\n"
+        ImGui::SetTooltip(UiText("EventSetStop(1): no event program or condition runs (NPCs, the\n"
                           "cat and the map still do; the cat stays off unless switched on\n"
-                          "below, since event 5 does it). Use Events below to run one.");
+                          "below, since event 5 does it). Use Events below to run one."));
     }
 
     if (ImGui::Button(g_job.kind == JOB_WARP ? UiText("Warping...") : UiText("Start here")))
@@ -1697,7 +1697,7 @@ void DrawEvents()
     }
     int state = GetEvState(g_event_id);
     ImGui::SameLine();
-    ImGui::Text("%s, ran %d time(s)", EventStateName(state), GetEvExeCount(g_event_id));
+    ImGui::Text(UiText("%s, ran %d time(s)"), EventStateName(state), GetEvExeCount(g_event_id));
     ImGui::BeginDisabled(!InPlay());
     if (ImGui::Button(UiText("Open (post its conditions)")))
     {
@@ -1755,8 +1755,8 @@ void DrawGameClear()
     {
         g_cleared = difficulty;
     }
-    ImGui::TextDisabled("New Game then opens the start menu (extra mode, missions, gallery, costumes);\n"
-                        "Hard (and Nightmare after a Hard clear) on the difficulty select. Kept until unticked.");
+    ImGui::TextDisabled(UiText("New Game then opens the start menu (extra mode, missions, gallery, costumes);\n"
+                        "Hard (and Nightmare after a Hard clear) on the difficulty select. Kept until unticked."));
     ImGui::SetNextItemWidth(120);
     ImGui::Combo(UiText("ending"), &ending, "first\0other\0");
     ImGui::SameLine();
@@ -1787,17 +1787,17 @@ void DrawCat()
     }
     const CAT_WRK *c = CatGetWrk(0);
 
-    ImGui::Text("active %d  loaded %d  visible %d  run_act %d  type %d  acs %d", c->active, c->loaded,
+    ImGui::Text(UiText("active %d  loaded %d  visible %d  run_act %d  type %d  acs %d"), c->active, c->loaded,
                 c->visible, c->run_act, c->type, c->acs_no);
-    ImGui::Text("models: body %s, part %s, accessory %s", c->mdl ? "yes" : "no", c->mdl2 ? "yes" : "no",
+    ImGui::Text(UiText("models: body %s, part %s, accessory %s"), c->mdl ? "yes" : "no", c->mdl2 ? "yes" : "no",
                 c->acs ? "yes" : "no");
-    ImGui::Text("area %d  pos (%.1f, %.1f, %.1f)  facing %.2f", c->area, c->pos[0], c->pos[1], c->pos[2],
+    ImGui::Text(UiText("area %d  pos (%.1f, %.1f, %.1f)  facing %.2f"), c->area, c->pos[0], c->pos[1], c->pos[2],
                 c->rot[1]);
-    ImGui::Text("act %d  label %d  step %d  move %d/%d  sub %d/%d  next %d", c->act, c->label, c->step, c->move,
+    ImGui::Text(UiText("act %d  label %d  step %d  move %d/%d  sub %d/%d  next %d"), c->act, c->label, c->step, c->move,
                 c->move_stat, c->sub, c->sub_stat, c->next_label);
-    ImGui::Text("stay %d  idle %d step %d left %d  pet %d->%d  look %d eye %d  door %d", c->stay_stat, c->idle,
+    ImGui::Text(UiText("stay %d  idle %d step %d left %d  pet %d->%d  look %d eye %d  door %d"), c->stay_stat, c->idle,
                 c->idle_step, c->idle_cnt, c->pet_step, c->pet_next, c->look_step, c->eye, c->door_stat);
-    ImGui::Text("motion %d / %d  fixed %d  locks %d%d%d%d%d%d", c->mot, c->mot2, c->fix_pos, c->lock[0] != 0,
+    ImGui::Text(UiText("motion %d / %d  fixed %d  locks %d%d%d%d%d%d"), c->mot, c->mot2, c->fix_pos, c->lock[0] != 0,
                 c->lock[1] != 0, c->lock[2] != 0, c->lock[3] != 0, c->lock[4] != 0, c->lock[5] != 0);
 
     ImGui::BeginDisabled(!InPlay());

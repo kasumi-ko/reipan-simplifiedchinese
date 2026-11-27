@@ -43,6 +43,7 @@
 namespace
 {
 using ReiPanUiLocale::UiText;
+using ReiPanUiLocale::Translate;
 
 ImGuiContext *g_context;
 ImPlotContext *g_plot_context;
@@ -223,9 +224,9 @@ void DrawFramePacingMenu()
         }
     }
     ImGui::Separator();
-    ImGui::TextDisabled("Measurement harness; not saved to reipan.ini.");
-    ImGui::TextDisabled("Watch 'deadline miss' in the summary: rising at");
-    ImGui::TextDisabled("1 field means the workload exceeds 16.7 ms.");
+    ImGui::TextDisabled(UiText("Measurement harness; not saved to reipan.ini."));
+    ImGui::TextDisabled(UiText("Watch 'deadline miss' in the summary: rising at"));
+    ImGui::TextDisabled(UiText("1 field means the workload exceeds 16.7 ms."));
     ImGui::EndMenu();
 }
 
@@ -264,9 +265,9 @@ void DrawFrameSmoothingMenu()
         }
     }
     ImGui::Separator();
-    ImGui::TextDisabled("At most %d extra: the game waits %d fields a tick",
+    ImGui::TextDisabled(UiText("At most %d extra: the game waits %d fields a tick"),
                         budget, budget + 1);
-    ImGui::TextDisabled("and vfunc() always keeps the last one for itself.");
+    ImGui::TextDisabled(UiText("and vfunc() always keeps the last one for itself."));
     ImGui::Separator();
     bool interpolate = ReiPan_RendererGetPresentInterpolation() != 0;
     if (ImGui::MenuItem(UiText("Interpolate camera"), nullptr, &interpolate,
@@ -282,19 +283,19 @@ void DrawFrameSmoothingMenu()
         ReiPan_RendererSetGeometryInterpolation(interpolate_geometry ? 1 : 0);
     }
     ImGui::Separator();
-    ImGui::TextDisabled("The simulation keeps its own rate either way -- the");
-    ImGui::TextDisabled("extra fields come out of the wait the game already");
-    ImGui::TextDisabled("does, so nothing speeds up.  Watch 'present/frame'");
-    ImGui::TextDisabled("in the summary follow this.");
-    ImGui::TextDisabled("With interpolation off the picture must not change.");
+    ImGui::TextDisabled(UiText("The simulation keeps its own rate either way -- the"));
+    ImGui::TextDisabled(UiText("extra fields come out of the wait the game already"));
+    ImGui::TextDisabled(UiText("does, so nothing speeds up.  Watch 'present/frame'"));
+    ImGui::TextDisabled(UiText("in the summary follow this."));
+    ImGui::TextDisabled(UiText("With interpolation off the picture must not change."));
     ImGui::Separator();
-    ImGui::TextDisabled("'Interpolate motion' moves the world as well as the");
-    ImGui::TextDisabled("eye: characters and moving objects stop stepping at");
-    ImGui::TextDisabled("30 Hz.  It re-uploads the vertex buffer once per");
-    ImGui::TextDisabled("present, so 'Renderer upload' rises with the frame");
-    ImGui::TextDisabled("rate -- with it off, upload must stay flat.  Watch");
-    ImGui::TextDisabled("'geo' in the summary: it is the share of 3D draws");
-    ImGui::TextDisabled("that found a matching draw last frame.");
+    ImGui::TextDisabled(UiText("'Interpolate motion' moves the world as well as the"));
+    ImGui::TextDisabled(UiText("eye: characters and moving objects stop stepping at"));
+    ImGui::TextDisabled(UiText("30 Hz.  It re-uploads the vertex buffer once per"));
+    ImGui::TextDisabled(UiText("present, so 'Renderer upload' rises with the frame"));
+    ImGui::TextDisabled(UiText("rate -- with it off, upload must stay flat.  Watch"));
+    ImGui::TextDisabled(UiText("'geo' in the summary: it is the share of 3D draws"));
+    ImGui::TextDisabled(UiText("that found a matching draw last frame."));
     ImGui::EndMenu();
 }
 
@@ -531,7 +532,7 @@ void DrawRendererGraph()
 void DrawHitchGraphs()
 {
     ImGui::TextDisabled(
-        "Worst logical frame in each ~1 s window. Inclusive phases overlap.");
+        UiText("Worst logical frame in each ~1 s window. Inclusive phases overlap."));
     if (ImPlot::BeginPlot(UiText("Game/transition max##ReiPanHitchGame"),
                           ImVec2(-1.0f, 255.0f)))
     {
@@ -584,7 +585,7 @@ void DrawHitchGraphs()
 void DrawWorldObjectsGraphs()
 {
     ImGui::TextDisabled(
-        "CPU phases are inclusive and may overlap; do not add the curves.");
+        UiText("CPU phases are inclusive and may overlap; do not add the curves."));
     if (ImPlot::BeginPlot(UiText("CPU timings##ReiPanWorldObjectTiming"),
                           ImVec2(-1.0f, 165.0f)))
     {
@@ -635,7 +636,7 @@ void DrawWorldObjectsGraphs()
     }
 
     ImGui::TextDisabled(
-        "Ideal draws = commands - compatible adjacent joins.");
+        UiText("Ideal draws = commands - compatible adjacent joins."));
     if (ImPlot::BeginPlot(UiText("MapPut sort work##ReiPanMapPutComparisons"),
                           ImVec2(-1.0f, 120.0f)))
     {
@@ -725,25 +726,25 @@ void DrawAntiAliasingMenu()
         /* Only when the two differ, so the usual case says nothing.  They
          * differ when the device clamped the request, or when the target
          * failed to allocate and the frame fell back. */
-        ImGui::TextDisabled("  running at %dx (device maximum %dx)",
+        ImGui::TextDisabled(UiText("  running at %dx (device maximum %dx)"),
                             msaa_active, msaa_max);
     }
-    ImGui::TextDisabled("  smooths geometry edges in the frame the game is");
-    ImGui::TextDisabled("  drawn into. Everything read back out of that frame");
-    ImGui::TextDisabled("  -- photographs, the pause still, effect grabs --");
-    ImGui::TextDisabled("  sees the resolved copy, so none of them changes.");
-    ImGui::TextDisabled("  Cost: this game samples the frame buffer for its");
-    ImGui::TextDisabled("  effects, and each such grab forces a full resolve,");
-    ImGui::TextDisabled("  so an effect-heavy scene costs far more than a");
-    ImGui::TextDisabled("  plain one. Gameplay visibility uses its own depth");
-    ImGui::TextDisabled("  pass at every MSAA setting.");
+    ImGui::TextDisabled(UiText("  smooths geometry edges in the frame the game is"));
+    ImGui::TextDisabled(UiText("  drawn into. Everything read back out of that frame"));
+    ImGui::TextDisabled(UiText("  -- photographs, the pause still, effect grabs --"));
+    ImGui::TextDisabled(UiText("  sees the resolved copy, so none of them changes."));
+    ImGui::TextDisabled(UiText("  Cost: this game samples the frame buffer for its"));
+    ImGui::TextDisabled(UiText("  effects, and each such grab forces a full resolve,"));
+    ImGui::TextDisabled(UiText("  so an effect-heavy scene costs far more than a"));
+    ImGui::TextDisabled(UiText("  plain one. Gameplay visibility uses its own depth"));
+    ImGui::TextDisabled(UiText("  pass at every MSAA setting."));
 
     ImGui::Separator();
 
     const int aniso = ReiPan_RendererGetAnisotropy();
     const int aniso_active = ReiPan_RendererGetAnisotropyActive();
 
-    ImGui::TextDisabled("Anisotropic filtering (all textures)");
+    ImGui::TextDisabled(UiText("Anisotropic filtering (all textures)"));
     ImGui::PushID("aniso");
     for (int taps = 1; taps <= 16; taps *= 2)
     {
@@ -764,17 +765,17 @@ void DrawAntiAliasingMenu()
     ImGui::PopID();
     if (aniso_active != aniso)
     {
-        ImGui::TextDisabled("  running at %dx (device refused the request)",
+        ImGui::TextDisabled(UiText("  running at %dx (device refused the request)"),
                             aniso_active);
     }
-    ImGui::TextDisabled("  stops tatami and corridor floors shimmering at");
-    ImGui::TextDisabled("  grazing angles. No extra passes, no extra memory.");
-    ImGui::TextDisabled("  Only where the PS2 asked for linear filtering in");
-    ImGui::TextDisabled("  both directions, so point-sampled art is untouched.");
-    ImGui::TextDisabled("  The port keeps one mip level per GS page, so this");
-    ImGui::TextDisabled("  supersamples the texel footprint rather than");
-    ImGui::TextDisabled("  picking a mip -- it helps the near and middle of a");
-    ImGui::TextDisabled("  floor much more than the far end of one.");
+    ImGui::TextDisabled(UiText("  stops tatami and corridor floors shimmering at"));
+    ImGui::TextDisabled(UiText("  grazing angles. No extra passes, no extra memory."));
+    ImGui::TextDisabled(UiText("  Only where the PS2 asked for linear filtering in"));
+    ImGui::TextDisabled(UiText("  both directions, so point-sampled art is untouched."));
+    ImGui::TextDisabled(UiText("  The port keeps one mip level per GS page, so this"));
+    ImGui::TextDisabled(UiText("  supersamples the texel footprint rather than"));
+    ImGui::TextDisabled(UiText("  picking a mip -- it helps the near and middle of a"));
+    ImGui::TextDisabled(UiText("  floor much more than the far end of one."));
 
     ImGui::EndMenu();
 }
@@ -805,15 +806,15 @@ void DrawEffectsMenu()
     {
         ReiPan_RendererSetFilmGrain(REIPAN_FILM_GRAIN_NATIVE);
     }
-    ImGui::TextDisabled("  one grain per screen pixel, whatever the");
-    ImGui::TextDisabled("  resolution -- same density and drift as the PS2");
-    if (ImGui::MenuItem("PS2 (128x128 sheet)", nullptr,
+    ImGui::TextDisabled(UiText("  one grain per screen pixel, whatever the"));
+    ImGui::TextDisabled(UiText("  resolution -- same density and drift as the PS2"));
+    if (ImGui::MenuItem(UiText("PS2 (128x128 sheet)"), nullptr,
                         grain == REIPAN_FILM_GRAIN_PS2))
     {
         ReiPan_RendererSetFilmGrain(REIPAN_FILM_GRAIN_PS2);
     }
-    ImGui::TextDisabled("  faithful: one grain per 640x448 pixel, so each");
-    ImGui::TextDisabled("  one arrives as big as your upscale makes it");
+    ImGui::TextDisabled(UiText("  faithful: one grain per 640x448 pixel, so each"));
+    ImGui::TextDisabled(UiText("  one arrives as big as your upscale makes it"));
 
     /*
      * Cut-out edge sharpening.  Sits here rather than under a debug view
@@ -830,10 +831,10 @@ void DrawEffectsMenu()
     {
         ReiPan_RendererSetAlphaSharpen(sharpen);
     }
-    ImGui::TextDisabled("  restores the one-texel alpha edge on foliage,");
-    ImGui::TextDisabled("  fences and hair that magnification softens");
-    ImGui::TextDisabled("  0.00 is the hardware's own edge; no effect at");
-    ImGui::TextDisabled("  or below native resolution whatever it is set to");
+    ImGui::TextDisabled(UiText("  restores the one-texel alpha edge on foliage,"));
+    ImGui::TextDisabled(UiText("  fences and hair that magnification softens"));
+    ImGui::TextDisabled(UiText("  0.00 is the hardware's own edge; no effect at"));
+    ImGui::TextDisabled(UiText("  or below native resolution whatever it is set to"));
 
     float cutoff = ReiPan_RendererGetAlphaCutoff();
     ImGui::SetNextItemWidth(180.0f);
@@ -841,11 +842,11 @@ void DrawEffectsMenu()
     {
         ReiPan_RendererSetAlphaCutoff(cutoff);
     }
-    ImGui::TextDisabled("  discards any texel below this outright -- a");
-    ImGui::TextDisabled("  blunter tool than Sharpen, and independent of");
-    ImGui::TextDisabled("  it. Aliases the edge, applies at every");
-    ImGui::TextDisabled("  resolution, and can thin hair and far foliage.");
-    ImGui::TextDisabled("  0.00 off; 0.50 is the usual cut-out midpoint.");
+    ImGui::TextDisabled(UiText("  discards any texel below this outright -- a"));
+    ImGui::TextDisabled(UiText("  blunter tool than Sharpen, and independent of"));
+    ImGui::TextDisabled(UiText("  it. Aliases the edge, applies at every"));
+    ImGui::TextDisabled(UiText("  resolution, and can thin hair and far foliage."));
+    ImGui::TextDisabled(UiText("  0.00 off; 0.50 is the usual cut-out midpoint."));
 
     ImGui::EndMenu();
 }
@@ -880,9 +881,9 @@ void DrawFinderMenu()
         enable = enable != 0 ? 0 : 1;
         changed = true;
     }
-    ImGui::TextDisabled("  a port addition -- the PS2 rendered 640x448");
-    ImGui::TextDisabled("  and nothing beyond it. No effect on a 4:3");
-    ImGui::TextDisabled("  window, where there is nothing outside.");
+    ImGui::TextDisabled(UiText("  a port addition -- the PS2 rendered 640x448"));
+    ImGui::TextDisabled(UiText("  and nothing beyond it. No effect on a 4:3"));
+    ImGui::TextDisabled(UiText("  window, where there is nothing outside."));
 
     ImGui::Separator();
     /* Greyed rather than hidden while the effect is off, so switching it on
@@ -893,19 +894,19 @@ void DrawFinderMenu()
         changed |= ImGui::SliderFloat(UiText("Blur"), &blur, 0.0f, 1.0f, "%.2f");
         ImGui::SetNextItemWidth(180.0f);
         changed |= ImGui::SliderFloat(UiText("Darken"), &darken, 0.0f, 1.0f, "%.2f");
-        ImGui::TextDisabled("  darken 1.00 with blur 0.00 is a black");
-        ImGui::TextDisabled("  surround rather than a defocused one");
+        ImGui::TextDisabled(UiText("  darken 1.00 with blur 0.00 is a black"));
+        ImGui::TextDisabled(UiText("  surround rather than a defocused one"));
 
         ImGui::SetNextItemWidth(180.0f);
         changed |= ImGui::SliderFloat(UiText("Indigo"), &tint, 0.0f, 1.0f, "%.2f");
-        ImGui::TextDisabled("  drains the colour toward ink indigo and");
-        ImGui::TextDisabled("  a cold, moonlit blue-white");
+        ImGui::TextDisabled(UiText("  drains the colour toward ink indigo and"));
+        ImGui::TextDisabled(UiText("  a cold, moonlit blue-white"));
 
         ImGui::SetNextItemWidth(180.0f);
         changed |= ImGui::SliderFloat(UiText("Frame size"), &scale, 0.25f, 2.0f,
                                       "%.2f");
-        ImGui::TextDisabled("  1.00 is the original 640x448 frame; below");
-        ImGui::TextDisabled("  it the surround covers game composition");
+        ImGui::TextDisabled(UiText("  1.00 is the original 640x448 frame; below"));
+        ImGui::TextDisabled(UiText("  it the surround covers game composition"));
     }
     ImGui::EndDisabled();
 
@@ -963,21 +964,21 @@ void DrawHdrMenu()
     float display_peak = 0.0f;
     ReiPan_RendererGetHdrDisplayInfo(&display_sdr_white, &display_peak);
 
-    ImGui::TextDisabled("  output: %s", active ? "HDR" : "SDR");
+    ImGui::TextDisabled(UiText("  output: %s"), active ? "HDR" : "SDR");
     if (display_sdr_white > 0.0f)
     {
-        ImGui::TextDisabled("  display: SDR white %.0f nits, peak %.0f nits",
+        ImGui::TextDisabled(UiText("  display: SDR white %.0f nits, peak %.0f nits"),
                             (double)display_sdr_white, (double)display_peak);
     }
     else
     {
-        ImGui::TextDisabled("  display: no HDR headroom reported");
+        ImGui::TextDisabled(UiText("  display: no HDR headroom reported"));
     }
     if (active && ReiPan_RendererHdrIsFullPrecision() == 0)
     {
         /* The one thing a live toggle cannot fix: the scene target's format is
          * decided when the pipelines are built. */
-        ImGui::TextDisabled("  8-bit scene; restart with HDR on for 10-bit");
+        ImGui::TextDisabled(UiText("  8-bit scene; restart with HDR on for 10-bit"));
     }
 
     /* Every HDR control below stays on screen whatever it is set to, greyed
@@ -1011,7 +1012,7 @@ void DrawHdrMenu()
          * bool* overload flips the caller's variable after drawing the tick
          * from its old value, which reads one frame stale right here where
          * the same variable also chooses what is drawn below. */
-        if (ImGui::MenuItem("   follow the OS SDR white level", nullptr,
+        if (ImGui::MenuItem(UiText("   follow the OS SDR white level"), nullptr,
                             paper_auto))
         {
             ReiPan_RendererSetHdrPaperWhite(paper_auto ? 200.0f : 0.0f);
@@ -1030,7 +1031,7 @@ void DrawHdrMenu()
             ReiPan_RendererSetHdrPeak(peak_value);
         }
         ImGui::EndDisabled();
-        if (ImGui::MenuItem("   follow the display's headroom", nullptr,
+        if (ImGui::MenuItem(UiText("   follow the display's headroom"), nullptr,
                             peak_auto))
         {
             ReiPan_RendererSetHdrPeak(
@@ -1056,8 +1057,8 @@ void DrawHdrMenu()
         {
             ReiPan_RendererSetHdrExpansion(strength, knee);
         }
-        ImGui::TextDisabled("  0 shows the SDR image at paper white and");
-        ImGui::TextDisabled("  invents nothing -- the faithful setting.");
+        ImGui::TextDisabled(UiText("  0 shows the SDR image at paper white and"));
+        ImGui::TextDisabled(UiText("  invents nothing -- the faithful setting."));
     }
     ImGui::EndDisabled();
 
@@ -1103,7 +1104,7 @@ void DrawGradeMenu()
     {
         ReiPan_RendererSetGrade(1.0f, 1.0f, 1.0f, 1.0f);
     }
-    ImGui::TextDisabled("  all four at 1.00 skips the output pass");
+    ImGui::TextDisabled(UiText("  all four at 1.00 skips the output pass"));
 
     ImGui::EndMenu();
 }
@@ -1351,8 +1352,19 @@ void ControlSourceText(const ReiPan_InputSource &src, char *buf, int len)
     if (src.kind == REIPAN_SRC_NONE ||
         ReiPan_InputSourceToString(&src, buf, len) == 0)
     {
-        SDL_snprintf(buf, (size_t)len, "unbound");
+        SDL_snprintf(buf, (size_t)len, "%s", UiText("unbound"));
+        return;
     }
+#ifdef REIPAN_SLPS_25544_CHS
+    const char *separator = std::strchr(buf, ':');
+    if (separator == nullptr)
+        return;
+    const std::string name(Translate(separator + 1));
+    const char *format = src.kind == REIPAN_SRC_KEY ? UiText("Keyboard: %s")
+                         : src.kind == REIPAN_SRC_PAD_BUTTON ? UiText("Gamepad: %s")
+                         : src.dir < 0 ? UiText("Axis -: %s") : UiText("Axis +: %s");
+    SDL_snprintf(buf, (size_t)len, format, name.c_str());
+#endif
 }
 
 bool ControlSourcesEqual(const ReiPan_InputSource &a,
@@ -1402,7 +1414,7 @@ void DrawCaptureCell(const char *id, const ReiPan_InputSource &src, bool waiting
     if (waiting)
     {
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.55f, 0.16f, 0.18f, 1.0f));
-        if (ImGui::Button("press...", ImVec2(-FLT_MIN, 0.0f)))
+        if (ImGui::Button(UiText("press..."), ImVec2(-FLT_MIN, 0.0f)))
         {
             CancelCapture();
         }
@@ -1435,7 +1447,7 @@ void DrawCaptureCell(const char *id, const ReiPan_InputSource &src, bool waiting
         }
         if (conflict_with >= 0 && ImGui::IsItemHovered())
         {
-            ImGui::SetTooltip("Also bound to %s -- both will fire",
+            ImGui::SetTooltip(UiText("Also bound to %s -- both will fire"),
                               kControlButtonLabels[conflict_with]);
         }
     }
@@ -1459,11 +1471,11 @@ void DrawControlsWindow()
     if (ImGui::Begin(UiText("ReiPan Controls"), &g_show_controls))
     {
         ImGui::TextWrapped(
-            "These 16 buttons and 4 stick axes are what the whole game reads "
+            UiText("These 16 buttons and 4 stick axes are what the whole game reads "
             "through, so rebinding one here moves it everywhere at once. Click "
-            "a binding, then press the key, gamepad button or trigger you want.");
+            "a binding, then press the key, gamepad button or trigger you want."));
         ImGui::TextDisabled(
-            "Esc cancels   Backspace clears   up to %d sources per button",
+            UiText("Esc cancels   Backspace clears   up to %d sources per button"),
             REIPAN_INPUT_MAX_SOURCES);
 
         ImGui::Separator();
@@ -1548,7 +1560,7 @@ void DrawControlsWindow()
 
                 if (n == 0)
                 {
-                    ImGui::TextDisabled("no gamepads connected");
+                    ImGui::TextDisabled(UiText("no gamepads connected"));
                 }
                 ImGui::EndCombo();
             }
@@ -1557,7 +1569,7 @@ void DrawControlsWindow()
             {
                 ImGui::SameLine();
                 ImGui::TextColored(ImVec4(0.94f, 0.58f, 0.36f, 1.0f),
-                                   "waiting for it");
+                                   "%s", UiText("waiting for it"));
             }
         }
 
@@ -1614,9 +1626,9 @@ void DrawControlsWindow()
         ImGui::Spacing();
         ImGui::TextDisabled(UiText("Sticks"));
         ImGui::TextWrapped(
-            "Ramp is how many updates a held key takes to reach full "
+            UiText("Ramp is how many updates a held key takes to reach full "
             "deflection: 1 snaps, which is what movement wants, while a higher "
-            "value makes keyboard aiming steerable instead of all-or-nothing.");
+            "value makes keyboard aiming steerable instead of all-or-nothing."));
 
         if (ImGui::BeginTable("##controls_sticks", 5, kTableFlags))
         {
@@ -1802,10 +1814,10 @@ void DrawDataFolderWindow()
     if (ImGui::Begin(UiText("ReiPan Game Data"), &g_show_data_folder))
     {
         ImGui::TextWrapped(
-            "Where ReiPan reads the game's files from: ZERO3.FHD with "
+            UiText("Where ReiPan reads the game's files from: ZERO3.FHD with "
             "IMG_BD.BIN or an extracted bin/data tree, or a disc image (.iso). "
             "It can be anywhere on this device -- nothing requires it to be "
-            "next to ReiPan.");
+            "next to ReiPan."));
 
         ImGui::Separator();
 
@@ -1861,8 +1873,8 @@ void DrawDataFolderWindow()
         if (g_data_folder_edit[0] == '\0')
         {
             ImGui::TextDisabled(
-                "Empty: look for the game beside ReiPan and above it, and save "
-                "whatever is found here.");
+                UiText("Empty: look for the game beside ReiPan and above it, and save "
+                "whatever is found here."));
         }
         else if (ReiPan_PathLooksLikeDataDir(g_data_folder_edit))
         {
@@ -1997,7 +2009,7 @@ void DrawDisplaySettingsMenu()
 
         int px = 0, py = 0, pw = 0, ph = 0;
         ReiPan_RendererGetPresentRect(&px, &py, &pw, &ph);
-        ImGui::TextDisabled("  presented at %dx%d +%d+%d", pw, ph, px, py);
+        ImGui::TextDisabled(UiText("  presented at %dx%d +%d+%d"), pw, ph, px, py);
     }
     ImGui::Separator();
 
@@ -2036,18 +2048,18 @@ void DrawGraphicsSettingsMenu()
         const char *asked =
             ReiPan_RendererGetBackendLabel(ReiPan_RendererGetBackend());
         ImGui::TextDisabled(
-            "  drawing with %s",
+            UiText("  drawing with %s"),
             ReiPan_RendererGetBackendLabel(ReiPan_RendererGetBackendActive()));
         switch (ReiPan_RendererGetBackendStatus())
         {
         case REIPAN_BACKEND_STATUS_RESTART:
-            ImGui::TextDisabled("  restart ReiPan to switch to %s", asked);
+            ImGui::TextDisabled(UiText("  restart ReiPan to switch to %s"), asked);
             break;
         case REIPAN_BACKEND_STATUS_FALLBACK:
-            ImGui::TextDisabled("  %s could not be started", asked);
+            ImGui::TextDisabled(UiText("  %s could not be started"), asked);
             break;
         case REIPAN_BACKEND_STATUS_OVERRIDDEN:
-            ImGui::TextDisabled("  SDL_GPU_DRIVER overrides this setting");
+            ImGui::TextDisabled(UiText("  SDL_GPU_DRIVER overrides this setting"));
             break;
         default:
             break;
@@ -2110,12 +2122,12 @@ void DrawGraphicsSettingsMenu()
         {
             ReiPan_RendererSetSmooth2d(smooth_2d);
         }
-        ImGui::TextDisabled("  Bilinear text and sprite textures, including effects; off uses PS2 sampling.");
+        ImGui::TextDisabled(UiText("  Bilinear text and sprite textures, including effects; off uses PS2 sampling."));
 
         int render_w = 0;
         int render_h = 0;
         ReiPan_RendererGetRenderSize(&render_w, &render_h);
-        ImGui::TextDisabled("  rasterised at %dx%d", render_w, render_h);
+        ImGui::TextDisabled(UiText("  rasterised at %dx%d"), render_w, render_h);
     }
     ImGui::Separator();
 
@@ -2133,7 +2145,7 @@ void DrawGraphicsSettingsMenu()
     if (ImGui::IsItemHovered())
     {
         ImGui::SetTooltip(
-            "Every light on the CPU, once per vertex. What the PS2 did.");
+            UiText("Every light on the CPU, once per vertex. What the PS2 did."));
     }
     if (ImGui::MenuItem(UiText("Fragment lighting (spots)"), nullptr,
                         lighting_mode == REIPAN_LIGHTING_FRAGMENT))
@@ -2143,7 +2155,7 @@ void DrawGraphicsSettingsMenu()
     if (ImGui::IsItemHovered())
     {
         ImGui::SetTooltip(
-            "Spotlights per pixel, the rest per vertex on the CPU.");
+            UiText("Spotlights per pixel, the rest per vertex on the CPU."));
     }
     if (ImGui::MenuItem(UiText("Fragment lighting (all lights)"), nullptr,
                         lighting_mode == REIPAN_LIGHTING_FRAGMENT_ALL))
@@ -2153,8 +2165,8 @@ void DrawGraphicsSettingsMenu()
     if (ImGui::IsItemHovered())
     {
         ImGui::SetTooltip(
-            "The whole light image per pixel; no CPU vertex lighting at "
-            "all.\nSharper speculars and cone edges than the PS2 had.");
+            UiText("The whole light image per pixel; no CPU vertex lighting at "
+            "all.\nSharper speculars and cone edges than the PS2 had."));
     }
     ImGui::Separator();
 
@@ -2168,7 +2180,7 @@ void DrawGraphicsSettingsMenu()
     if (ImGui::IsItemHovered())
     {
         ImGui::SetTooltip(
-            "One tap of the silhouette, as the projected sprite gave.");
+            UiText("One tap of the silhouette, as the projected sprite gave."));
     }
     if (ImGui::MenuItem(UiText("Soft edge"), nullptr,
                         shadow_filter == REIPAN_SHADOW_FILTER_SOFT))
@@ -2177,7 +2189,7 @@ void DrawGraphicsSettingsMenu()
     }
     if (ImGui::IsItemHovered())
     {
-        ImGui::SetTooltip("Average a 3x3 of the silhouette.");
+        ImGui::SetTooltip(UiText("Average a 3x3 of the silhouette."));
     }
     ImGui::Separator();
 
@@ -2231,11 +2243,11 @@ void DrawMouseSettingsMenu()
 
     for (int act = 0; act < REIPAN_MOUSE_ACT_COUNT; act++)
     {
-        if (ImGui::BeginMenu(ReiPan_GameMouseActionLabel(act)))
+        if (ImGui::BeginMenu(Translate(ReiPan_GameMouseActionLabel(act)).data()))
         {
             for (int src = 0; src < REIPAN_MOUSE_SRC_COUNT; src++)
             {
-                if (ImGui::MenuItem(ReiPan_GameMouseSourceLabel(src), nullptr,
+                if (ImGui::MenuItem(Translate(ReiPan_GameMouseSourceLabel(src)).data(), nullptr,
                                     s.bind[act] == src))
                 {
                     s.bind[act] = src;
@@ -2245,7 +2257,7 @@ void DrawMouseSettingsMenu()
             ImGui::EndMenu();
         }
         ImGui::SameLine(260.0f);
-        ImGui::TextDisabled("%s", ReiPan_GameMouseSourceLabel(s.bind[act]));
+        ImGui::TextDisabled("%s", Translate(ReiPan_GameMouseSourceLabel(s.bind[act])).data());
     }
     ImGui::Separator();
     if (ImGui::MenuItem(UiText("Reset mouse")))
@@ -2285,23 +2297,23 @@ void DrawGyroSettingsMenu()
     }
     if (status.has_gamepad == 0)
     {
-        ImGui::TextDisabled("   no gamepad connected");
+        ImGui::TextDisabled(UiText("   no gamepad connected"));
     }
     else if (status.has_gyro == 0)
     {
-        ImGui::TextDisabled("   this gamepad reports no gyro");
+        ImGui::TextDisabled(UiText("   this gamepad reports no gyro"));
     }
     else if (status.active == 0)
     {
-        ImGui::TextDisabled("   gyro off");
+        ImGui::TextDisabled(UiText("   gyro off"));
     }
     else if (status.rate_hz > 0.0f)
     {
-        ImGui::TextDisabled("   gyro reporting at %.0f Hz", (double)status.rate_hz);
+        ImGui::TextDisabled(UiText("   gyro reporting at %.0f Hz"), (double)status.rate_hz);
     }
     else
     {
-        ImGui::TextDisabled("   gyro reporting");
+        ImGui::TextDisabled(UiText("   gyro reporting"));
     }
 
     ImGui::BeginDisabled(!look);
@@ -2312,19 +2324,19 @@ void DrawGyroSettingsMenu()
                                   ImGuiSliderFlags_Logarithmic);
     if (ImGui::IsItemHovered())
     {
-        ImGui::SetTooltip("1.00x turns the view as far as the pad turns.");
+        ImGui::SetTooltip(UiText("1.00x turns the view as far as the pad turns."));
     }
     ImGui::PopItemWidth();
 
     ImGui::Separator();
     ImGui::TextDisabled(UiText("Turn with"));
-    if (ImGui::MenuItem("   Yaw: point the pad left and right", nullptr,
+    if (ImGui::MenuItem(UiText("   Yaw: point the pad left and right"), nullptr,
                         s.turn == REIPAN_GYRO_TURN_YAW))
     {
         s.turn = REIPAN_GYRO_TURN_YAW;
         changed = true;
     }
-    if (ImGui::MenuItem("   Roll: tip the pad sideways", nullptr,
+    if (ImGui::MenuItem(UiText("   Roll: tip the pad sideways"), nullptr,
                         s.turn == REIPAN_GYRO_TURN_ROLL))
     {
         s.turn = REIPAN_GYRO_TURN_ROLL;
@@ -2350,7 +2362,7 @@ void DrawGyroSettingsMenu()
      * positive pitch. */
     if (status.active != 0)
     {
-        ImGui::Text("Now  yaw %+7.1f  pitch %+7.1f  deg/s%s",
+        ImGui::Text(UiText("Now  yaw %+7.1f  pitch %+7.1f  deg/s%s"),
                     (double)status.rate_yaw_deg, (double)status.rate_pitch_deg,
                     status.aiming != 0 ? "   aiming" : "");
         if (status.calibration < 1.0f)
@@ -2362,8 +2374,8 @@ void DrawGyroSettingsMenu()
         }
         else
         {
-            ImGui::TextDisabled("Drift learned: %+.2f / %+.2f / %+.2f deg/s "
-                                "(pitch / yaw / roll)",
+            ImGui::TextDisabled(UiText("Drift learned: %+.2f / %+.2f / %+.2f deg/s "
+                                "(pitch / yaw / roll)"),
                                 (double)status.bias_deg[0],
                                 (double)status.bias_deg[1],
                                 (double)status.bias_deg[2]);
@@ -2410,7 +2422,7 @@ void DrawRumbleSettingsMenu()
     }
     else if (status.has_rumble == 0)
     {
-        ImGui::TextDisabled("This gamepad reports no motors");
+        ImGui::TextDisabled(UiText("This gamepad reports no motors"));
     }
     ImGui::PushItemWidth(200.0f);
     float strength = s.strength * 100.0f;
@@ -2430,13 +2442,13 @@ void DrawRumbleSettingsMenu()
     switch (status.triggers)
     {
     case REIPAN_TRIGGERS_WINDOWS:
-        ImGui::TextDisabled("   on, all four motors through Windows");
+        ImGui::TextDisabled(UiText("   on, all four motors through Windows"));
         break;
     case REIPAN_TRIGGERS_SDL:
-        ImGui::TextDisabled("   on, through SDL");
+        ImGui::TextDisabled(UiText("   on, through SDL"));
         break;
     case REIPAN_TRIGGERS_SEARCHING:
-        ImGui::TextDisabled("   looking for the pad in Windows: press a button on it");
+        ImGui::TextDisabled(UiText("   looking for the pad in Windows: press a button on it"));
         break;
     default:
         ImGui::TextDisabled("%s", triggers && status.has_gamepad != 0
@@ -2460,7 +2472,7 @@ void DrawRumbleSettingsMenu()
     }
     if (ImGui::IsItemHovered())
     {
-        ImGui::SetTooltip("The shutter, the charge and a shutter chance.");
+        ImGui::SetTooltip(UiText("The shutter, the charge and a shutter chance."));
     }
     ImGui::EndDisabled();
     ImGui::PopItemWidth();
@@ -2567,8 +2579,8 @@ void DrawCameraSettingsMenu()
         s.enabled = enabled ? 1 : 0;
         changed = true;
     }
-    ImGui::TextDisabled("Right stick turns it, R3 puts it behind her.");
-    ImGui::TextDisabled("Events, the viewfinder and ladders keep their own.");
+    ImGui::TextDisabled(UiText("Right stick turns it, R3 puts it behind her."));
+    ImGui::TextDisabled(UiText("Events, the viewfinder and ladders keep their own."));
     ImGui::Separator();
 
     bool left = s.side_left != 0;
@@ -2598,8 +2610,8 @@ void DrawCameraSettingsMenu()
                 changed = true;
             }
         }
-        ImGui::TextDisabled("When the game cuts to an event camera while");
-        ImGui::TextDisabled("she can still walk.");
+        ImGui::TextDisabled(UiText("When the game cuts to an event camera while"));
+        ImGui::TextDisabled(UiText("she can still walk."));
         ImGui::EndMenu();
     }
     bool follow = s.auto_follow != 0;
@@ -2651,29 +2663,29 @@ void DrawCameraSettingsMenu()
     ImGui::Separator();
     if (!enabled)
     {
-        ImGui::TextDisabled("Off: the game's fixed cameras.");
+        ImGui::TextDisabled(UiText("Off: the game's fixed cameras."));
     }
     else if (d.ticks_since > 2)
     {
-        ImGui::TextDisabled("The game's cameras are not running here.");
+        ImGui::TextDisabled(UiText("The game's cameras are not running here."));
     }
     else if (!d.active)
     {
-        ImGui::TextDisabled("Not on screen: the game is using its %s.",
+        ImGui::TextDisabled(UiText("Not on screen: the game is using its %s."),
                             ReiPan_OverShoulderCameraName(d.game_camera));
     }
     else
     {
-        ImGui::TextDisabled("Yaw %.0f  pitch %.0f%s%s", d.yaw_deg, d.pitch_deg,
+        ImGui::TextDisabled(UiText("Yaw %.0f  pitch %.0f%s%s"), d.yaw_deg, d.pitch_deg,
                             d.over_event ? "  (over an event camera)" : "",
                             d.guiding ? "  guiding" : "");
-        ImGui::TextDisabled("Back %.1f of %.1f  (scenery allows %.1f)", d.boom,
+        ImGui::TextDisabled(UiText("Back %.1f of %.1f  (scenery allows %.1f)"), d.boom,
                             d.requested, d.allowed);
-        ImGui::TextDisabled("Scenery: %d pieces, %d crossed, %d triangles",
+        ImGui::TextDisabled(UiText("Scenery: %d pieces, %d crossed, %d triangles"),
                             d.pieces, d.pieces_tested, d.triangles_tested);
         if (d.hit)
         {
-            ImGui::TextDisabled("Stopped by a piece %.1f x %.1f x %.1f",
+            ImGui::TextDisabled(UiText("Stopped by a piece %.1f x %.1f x %.1f"),
                                 d.hit_size[0], d.hit_size[1], d.hit_size[2]);
         }
     }
@@ -2731,14 +2743,14 @@ void DrawUnlocksMenu()
     }
     if (ImGui::IsItemHovered())
     {
-        ImGui::SetTooltip("As a fully played save: every difficulty, the start menu\n"
+        ImGui::SetTooltip(UiText("As a fully played save: every difficulty, the start menu\n"
                           "on New Game (the game counts as cleared once), every\n"
                           "bonus-shop entry bought -- costumes, accessories, gallery\n"
                           "pictures, lenses and camera functions -- both gallery\n"
                           "movies and every extra-mission group. Put back every\n"
                           "frame while ticked, since each game start wipes it; a\n"
                           "save made meanwhile keeps it. Unticking leaves what is set\n"
-                          "(reipan/debug/reipan_assists.cpp).");
+                          "(reipan/debug/reipan_assists.cpp)."));
     }
     ImGui::EndMenu();
 }
@@ -2795,7 +2807,7 @@ void DrawDiagnosticsMenu()
         ReiPan_RendererGetShadowStats(&shadows, &casters, &receivers,
                                       &valid);
         ImGui::TextDisabled(
-            "  shadows %d / caster draws %d / receiver draws %d / map %s",
+            UiText("  shadows %d / caster draws %d / receiver draws %d / map %s"),
             shadows, casters, receivers, valid ? "yes" : "no");
     }
     ImGui::Separator();
@@ -2809,10 +2821,10 @@ void DrawDiagnosticsMenu()
     if (ImGui::IsItemHovered())
     {
         ImGui::SetTooltip(
-            "Rooms, furniture and doors are decoded once and drawn from\n"
+            UiText("Rooms, furniture and doors are decoded once and drawn from\n"
             "GPU buffers, with neighbouring parts merged into one draw.\n"
             "Off re-decodes and re-uploads every mesh every frame, as the\n"
-            "PS2-shaped path always has -- the A/B if anything differs.");
+            "PS2-shaped path always has -- the A/B if anything differs."));
     }
     bool resident_textures = ReiPan_RendererGetResidentTextures() != 0;
     if (ImGui::MenuItem(UiText("Stop re-sending their textures"), nullptr,
@@ -2823,10 +2835,10 @@ void DrawDiagnosticsMenu()
     if (ImGui::IsItemHovered())
     {
         ImGui::SetTooltip(
-            "Each room, piece of furniture and door resolves its textures\n"
+            UiText("Each room, piece of furniture and door resolves its textures\n"
             "once, and then stops uploading them to the emulated GS every\n"
             "frame. Off re-sends and re-hashes them every draw, as the PS2\n"
-            "did -- the A/B if a texture looks wrong.");
+            "did -- the A/B if a texture looks wrong."));
     }
 
     ImGui::EndMenu();
@@ -2908,10 +2920,10 @@ void DrawDebugMenu()
         }
         if (ImGui::IsItemHovered())
         {
-            ImGui::SetTooltip("The cone the game tests for Rei's light (40 degrees,\n"
+            ImGui::SetTooltip(UiText("The cone the game tests for Rei's light (40 degrees,\n"
                               "1200 units) in blue, its reach in yellow, a box around\n"
                               "her in green and her facing in red, drawn with FF3's\n"
-                              "own unused debug line helpers.");
+                              "own unused debug line helpers."));
         }
     }
     DrawDiagnosticsMenu();
@@ -2977,61 +2989,61 @@ void DrawMainMenuBar()
  */
 void DrawPerformanceDetail(const ReiPanProfilerStats &profiler)
 {
-    ImGui::Text("CPU timing avg / 1s max (ms)");
-    ImGui::Text("Frame paced %.2f / %.2f | workload %.2f / %.2f",
+    ImGui::Text(UiText("CPU timing avg / 1s max (ms)"));
+    ImGui::Text(UiText("Frame paced %.2f / %.2f | workload %.2f / %.2f"),
                 profiler.frame_ms, profiler.frame_max_ms,
                 profiler.workload_ms, profiler.workload_max_ms);
-    ImGui::Text("Game CPU %.2f / %.2f | VBlank/gate %.2f / %.2f",
+    ImGui::Text(UiText("Game CPU %.2f / %.2f | VBlank/gate %.2f / %.2f"),
                 profiler.game_cpu_ms, profiler.game_cpu_max_ms,
                 profiler.vblank_wait_ms, profiler.vblank_wait_max_ms);
-    ImGui::Text("SGD %.2f / %.2f | mesh bridge %.2f / %.2f",
+    ImGui::Text(UiText("SGD %.2f / %.2f | mesh bridge %.2f / %.2f"),
                 profiler.sgd_cpu_ms, profiler.sgd_cpu_max_ms,
                 profiler.mesh_cpu_ms, profiler.mesh_cpu_max_ms);
-    ImGui::Text("Colour/light %.2f / %.2f | VUVN/skin %.2f / %.2f | tex miss %.2f / %.2f",
+    ImGui::Text(UiText("Colour/light %.2f / %.2f | VUVN/skin %.2f / %.2f | tex miss %.2f / %.2f"),
                 profiler.mesh_lighting_ms,
                 profiler.mesh_lighting_max_ms,
                 profiler.mesh_skinning_ms,
                 profiler.mesh_skinning_max_ms,
                 profiler.texture_miss_ms,
                 profiler.texture_miss_max_ms);
-    ImGui::Text("World phases inclusive avg / 1s max (ms)");
-    ImGui::Text("Billboard packet %.2f / %.2f | host bridge %.2f / %.2f | sky %.2f / %.2f",
+    ImGui::Text(UiText("World phases inclusive avg / 1s max (ms)"));
+    ImGui::Text(UiText("Billboard packet %.2f / %.2f | host bridge %.2f / %.2f | sky %.2f / %.2f"),
                 profiler.billboard_cpu_ms,
                 profiler.billboard_cpu_max_ms,
                 profiler.billboard_host_bridge_ms,
                 profiler.billboard_host_bridge_max_ms,
                 profiler.sky_cpu_ms,
                 profiler.sky_cpu_max_ms);
-    ImGui::Text("MapPut sort %.2f / %.2f | callbacks %.2f / %.2f",
+    ImGui::Text(UiText("MapPut sort %.2f / %.2f | callbacks %.2f / %.2f"),
                 profiler.mapput_sort_ms,
                 profiler.mapput_sort_max_ms,
                 profiler.mapput_callback_ms,
                 profiler.mapput_callback_max_ms);
-    ImGui::Text("Renderer %.2f / %.2f | upload %.2f / %.2f",
+    ImGui::Text(UiText("Renderer %.2f / %.2f | upload %.2f / %.2f"),
                 profiler.renderer_ms, profiler.renderer_max_ms,
                 profiler.renderer_upload_ms,
                 profiler.renderer_upload_max_ms);
-    ImGui::Text("Record %.2f / %.2f | acquire %.2f / %.2f | submit %.2f / %.2f",
+    ImGui::Text(UiText("Record %.2f / %.2f | acquire %.2f / %.2f | submit %.2f / %.2f"),
                 profiler.renderer_record_ms,
                 profiler.renderer_record_max_ms,
                 profiler.renderer_acquire_ms,
                 profiler.renderer_acquire_max_ms,
                 profiler.renderer_submit_ms,
                 profiler.renderer_submit_max_ms);
-    ImGui::Text("GPU idle %.2f / %.2f (%d) | swapchain miss %d/%d",
+    ImGui::Text(UiText("GPU idle %.2f / %.2f (%d) | swapchain miss %d/%d"),
                 profiler.gpu_idle_wait_ms,
                 profiler.gpu_idle_wait_max_ms,
                 profiler.gpu_idle_waits,
                 profiler.swapchain_unavailable,
                 profiler.swapchain_acquire_attempts);
-    ImGui::Text("Pacing target %d VBlanks (~%.1f ms) | drained %d | waits %d | deadline miss %d",
+    ImGui::Text(UiText("Pacing target %d VBlanks (~%.1f ms) | drained %d | waits %d | deadline miss %d"),
                 profiler.vblank_target,
                 (double)profiler.vblank_target * (1000.0 / 60.0),
                 profiler.vblank_drained,
                 profiler.vblank_wait_calls,
                 profiler.vblank_deadline_misses);
-    ImGui::Text("World counters avg/frame / frame max");
-    ImGui::Text("Billboard request %.1f/%llu | queued %.1f/%llu | reject %.1f/%llu | suppressed %.1f/%llu",
+    ImGui::Text(UiText("World counters avg/frame / frame max"));
+    ImGui::Text(UiText("Billboard request %.1f/%llu | queued %.1f/%llu | reject %.1f/%llu | suppressed %.1f/%llu"),
                 profiler.billboard_requests.per_frame,
                 (unsigned long long)profiler.billboard_requests.max,
                 profiler.billboard_queued.per_frame,
@@ -3040,14 +3052,14 @@ void DrawPerformanceDetail(const ReiPanProfilerStats &profiler)
                 (unsigned long long)profiler.billboard_rejected.max,
                 profiler.billboard_suppressed.per_frame,
                 (unsigned long long)profiler.billboard_suppressed.max);
-    ImGui::Text("Billboard cmd %.1f/%llu | verts %.1f/%llu | queued %.1f/%.1f KiB",
+    ImGui::Text(UiText("Billboard cmd %.1f/%llu | verts %.1f/%llu | queued %.1f/%.1f KiB"),
                 profiler.billboard_commands.per_frame,
                 (unsigned long long)profiler.billboard_commands.max,
                 profiler.billboard_vertices.per_frame,
                 (unsigned long long)profiler.billboard_vertices.max,
                 profiler.billboard_stream_bytes.per_frame / 1024.0,
                 (double)profiler.billboard_stream_bytes.max / 1024.0);
-    ImGui::Text("Billboard joins %.1f/%llu | texture %.1f/%llu | L1 miss %.1f/%llu | legacy skip %.1f/%llu",
+    ImGui::Text(UiText("Billboard joins %.1f/%llu | texture %.1f/%llu | L1 miss %.1f/%llu | legacy skip %.1f/%llu"),
                 profiler.billboard_compatible_joins.per_frame,
                 (unsigned long long)profiler.billboard_compatible_joins.max,
                 profiler.billboard_texture_lookups.per_frame,
@@ -3056,7 +3068,7 @@ void DrawPerformanceDetail(const ReiPanProfilerStats &profiler)
                 (unsigned long long)profiler.billboard_texture_misses.max,
                 profiler.billboard_legacy_skips.per_frame,
                 (unsigned long long)profiler.billboard_legacy_skips.max);
-    ImGui::Text("Sky cmd %.1f/%llu | verts %.1f/%llu | queued %.1f/%.1f KiB | joins %.1f/%llu",
+    ImGui::Text(UiText("Sky cmd %.1f/%llu | verts %.1f/%llu | queued %.1f/%.1f KiB | joins %.1f/%llu"),
                 profiler.sky_commands.per_frame,
                 (unsigned long long)profiler.sky_commands.max,
                 profiler.sky_vertices.per_frame,
@@ -3065,7 +3077,7 @@ void DrawPerformanceDetail(const ReiPanProfilerStats &profiler)
                 (double)profiler.sky_stream_bytes.max / 1024.0,
                 profiler.sky_compatible_joins.per_frame,
                 (unsigned long long)profiler.sky_compatible_joins.max);
-    ImGui::Text("Sky points %.1f/%llu | cells %.1f/%llu | visible %.1f/%llu | horizon %.1f/%llu",
+    ImGui::Text(UiText("Sky points %.1f/%llu | cells %.1f/%llu | visible %.1f/%llu | horizon %.1f/%llu"),
                 profiler.sky_points_transformed.per_frame,
                 (unsigned long long)profiler.sky_points_transformed.max,
                 profiler.sky_cells_tested.per_frame,
@@ -3074,27 +3086,27 @@ void DrawPerformanceDetail(const ReiPanProfilerStats &profiler)
                 (unsigned long long)profiler.sky_visible_cells.max,
                 profiler.sky_horizon_quads.per_frame,
                 (unsigned long long)profiler.sky_horizon_quads.max);
-    ImGui::Text("Sky suppressed dome %.1f/%llu | horizon %.1f/%llu",
+    ImGui::Text(UiText("Sky suppressed dome %.1f/%llu | horizon %.1f/%llu"),
                 profiler.sky_dome_suppressed.per_frame,
                 (unsigned long long)profiler.sky_dome_suppressed.max,
                 profiler.sky_horizon_suppressed.per_frame,
                 (unsigned long long)profiler.sky_horizon_suppressed.max);
-    ImGui::Text("MapPut candidate %.1f/%llu | drawable %.1f/%llu | compare %.1f/%llu",
+    ImGui::Text(UiText("MapPut candidate %.1f/%llu | drawable %.1f/%llu | compare %.1f/%llu"),
                 profiler.mapput_candidates.per_frame,
                 (unsigned long long)profiler.mapput_candidates.max,
                 profiler.mapput_drawable.per_frame,
                 (unsigned long long)profiler.mapput_drawable.max,
                 profiler.mapput_comparisons.per_frame,
                 (unsigned long long)profiler.mapput_comparisons.max);
-    ImGui::Text("MapPut callbacks %.1f/%llu | object draws %.1f/%llu",
+    ImGui::Text(UiText("MapPut callbacks %.1f/%llu | object draws %.1f/%llu"),
                 profiler.mapput_callbacks.per_frame,
                 (unsigned long long)profiler.mapput_callbacks.max,
                 profiler.mapput_object_draws.per_frame,
                 (unsigned long long)profiler.mapput_object_draws.max);
-    ImGui::Text("%zu draws | %zu verts",
+    ImGui::Text(UiText("%zu draws | %zu verts"),
                 g_performance_stats.draw_count,
                 g_performance_stats.vertex_count);
-    ImGui::Text("Mesh tri %d | clip %d",
+    ImGui::Text(UiText("Mesh tri %d | clip %d"),
                 g_performance_stats.mesh_triangles_submitted,
                 g_performance_stats.mesh_triangles_clipped);
     {
@@ -3102,7 +3114,7 @@ void DrawPerformanceDetail(const ReiPanProfilerStats &profiler)
          * the draws they were folded into. */
         const double frames = g_performance_stats.window_frames > 0
             ? (double)g_performance_stats.window_frames : 1.0;
-        ImGui::Text("Resident %zu meshes %.1f MiB | %.0f units -> %.0f draws/frame | built %d",
+        ImGui::Text(UiText("Resident %zu meshes %.1f MiB | %.0f units -> %.0f draws/frame | built %d"),
                     g_performance_stats.resident_meshes,
                     (double)g_performance_stats.resident_bytes /
                         (1024.0 * 1024.0),
@@ -3111,7 +3123,7 @@ void DrawPerformanceDetail(const ReiPanProfilerStats &profiler)
                     g_performance_stats.resident_creates);
         /* What still reaches the emulated GS, and the model uploads that no
          * longer do. */
-        ImGui::Text("GS uploads %.1f/frame %.0f KB/frame | model TRI2 skipped %.1f/frame replayed %.1f/frame | bound %d",
+        ImGui::Text(UiText("GS uploads %.1f/frame %.0f KB/frame | model TRI2 skipped %.1f/frame replayed %.1f/frame | bound %d"),
                     (double)g_performance_stats.gs_uploads / frames,
                     (double)g_performance_stats.gs_upload_bytes / frames /
                         1024.0,
@@ -3121,7 +3133,7 @@ void DrawPerformanceDetail(const ReiPanProfilerStats &profiler)
                         frames,
                     g_performance_stats.resident_texture_captures);
     }
-    ImGui::Text("Mesh cache %d/%d | new %d | evict %d | inv %d | fail %d",
+    ImGui::Text(UiText("Mesh cache %d/%d | new %d | evict %d | inv %d | fail %d"),
                 g_performance_stats.mesh_cache_hits,
                 g_performance_stats.mesh_cache_hits +
                     g_performance_stats.mesh_cache_misses,
@@ -3129,21 +3141,21 @@ void DrawPerformanceDetail(const ReiPanProfilerStats &profiler)
                 g_performance_stats.mesh_cache_evictions,
                 g_performance_stats.mesh_cache_invalidations,
                 g_performance_stats.mesh_cache_upload_failures);
-    ImGui::Text("Mesh resident %zu | %.1f MiB | avoided %zu verts",
+    ImGui::Text(UiText("Mesh resident %zu | %.1f MiB | avoided %zu verts"),
                 g_performance_stats.mesh_cache_entries,
                 (double)g_performance_stats.mesh_cache_bytes /
                     (1024.0 * 1024.0),
                 g_performance_stats.mesh_expanded_vertices_avoided);
-    ImGui::Text("Mesh warm pending %zu | promoted %d | build defer %d | upload defer %d",
+    ImGui::Text(UiText("Mesh warm pending %zu | promoted %d | build defer %d | upload defer %d"),
                 g_performance_stats.mesh_cache_pending_entries,
                 g_performance_stats.mesh_cache_promotions,
                 g_performance_stats.mesh_cache_build_deferred,
                 g_performance_stats.mesh_cache_upload_deferred);
-    ImGui::Text("Mesh arenas %zu pages | %.1f MiB allocated",
+    ImGui::Text(UiText("Mesh arenas %zu pages | %.1f MiB allocated"),
                 g_performance_stats.mesh_arena_pages,
                 (double)g_performance_stats.mesh_arena_bytes /
                     (1024.0 * 1024.0));
-    ImGui::Text("Mesh upload cache %.1f MiB | colour %.1f MiB | animated %.1f MiB",
+    ImGui::Text(UiText("Mesh upload cache %.1f MiB | colour %.1f MiB | animated %.1f MiB"),
                 (double)g_performance_stats.mesh_cache_upload_bytes /
                     (1024.0 * 1024.0),
                 (double)g_performance_stats.mesh_colour_upload_bytes /
@@ -3158,22 +3170,22 @@ void DrawPerformanceDetail(const ReiPanProfilerStats &profiler)
             ? (double)(animated_unique + animated_avoided) * 48.0 /
                   ((double)animated_unique * 32.0)
             : 0.0;
-    ImGui::Text("Animated unique %zu | expansion avoided %zu | %.2fx smaller",
+    ImGui::Text(UiText("Animated unique %zu | expansion avoided %zu | %.2fx smaller"),
                 animated_unique, animated_avoided,
                 animated_stream_reduction);
-    ImGui::Text("Mesh direct %zu verts | %.1f MiB staging avoided",
+    ImGui::Text(UiText("Mesh direct %zu verts | %.1f MiB staging avoided"),
                 g_performance_stats.mesh_direct_stream_vertices,
                 (double)g_performance_stats.mesh_direct_stream_vertices *
                     84.0 / (1024.0 * 1024.0));
-    ImGui::Text("Texture L1 %d/%d | L2 %d",
+    ImGui::Text(UiText("Texture L1 %d/%d | L2 %d"),
                 g_performance_stats.texture_l1_hits,
                 g_performance_stats.texture_l1_lookups,
                 g_performance_stats.texture_l2_hits);
-    ImGui::Text("Texture new %d | dl %d | inv %d",
+    ImGui::Text(UiText("Texture new %d | dl %d | inv %d"),
                 g_performance_stats.texture_creates,
                 g_performance_stats.texture_downloads,
                 g_performance_stats.texture_invalidations);
-    ImGui::Text("Font %d/%d | new %d | inv %d",
+    ImGui::Text(UiText("Font %d/%d | new %d | inv %d"),
                 g_performance_stats.font_texture_hits,
                 g_performance_stats.font_texture_selects,
                 g_performance_stats.font_texture_creates,
@@ -3213,13 +3225,13 @@ void DrawProfilerGraphs()
                 NewestProfilerHistorySample().time_seconds -
                 OldestProfilerHistorySample().time_seconds;
             ImGui::TextDisabled(
-                "%d samples / %.1f s. Average lines are per logical frame; "
-                "max lines are the worst frame in each ~1 s sample.",
+                UiText("%d samples / %.1f s. Average lines are per logical frame; "
+                "max lines are the worst frame in each ~1 s sample."),
                 g_profiler_history_count, span);
 
             if (ImGui::BeginTabBar("##ReiPanProfilerTabs"))
             {
-                if (ImGui::BeginTabItem("Frame"))
+                if (ImGui::BeginTabItem(UiText("Frame")))
                 {
                     DrawFrameTimingGraph();
                     ImGui::EndTabItem();
@@ -3736,8 +3748,8 @@ void Draw()
          * question for the world -- the share of 3D draws that corresponded to
          * one last frame, so a low figure means the draw list keeps changing
          * shape rather than that anything is wrong. */
-        ImGui::Text("Game %.1f FPS | Present %.1f FPS | present/frame %.2f | "
-                    "cam %s/tick | geo %s",
+        ImGui::Text(UiText("Game %.1f FPS | Present %.1f FPS | present/frame %.2f | "
+                    "cam %s/tick | geo %s"),
                     g_performance_stats.game_fps,
                     g_performance_stats.present_fps,
                     g_performance_stats.game_fps > 0.0

@@ -29,10 +29,12 @@
 #include "system/eeiop/cd_file_dat.h"   // MSG_OBJ
 #include "system/eeiop/cddat.h"
 #include "reipan/io/reipan_file.h"
+#include "reipan/io/reipan_input.h"
 #include "reipan/io/reipan_paths.h"
 #include "system/mc/prg/mc_check_card.h"    // GetAccessMemoryCardPort
 #include "system/os/eecdvd.h"           // LoadReq
 #include "system/os/system.h"           // GetSysWrk, SYS_WRK::GetLanguage
+#include "system/pad/pad_ctrl.h"
 #include "common/get_byte.h"     // Get1Byte, Get4Byte
 #include "ingame/event/prg/ev_get.h"    // EvBinChangeAddr4
 
@@ -201,6 +203,26 @@ static u_long *SetFontTex(u_long *pbuf, u_long tex0, int bank)
     return pbuf + 8;
 }
 
+static void DrawFontCell(const MSG_FONT_CELL &cell, int fn, u_int z, float x, float y,
+                         float scale, int width, u_char r, u_char g, u_char b, u_char a)
+{
+    const int u = (fn % cell.cols) * cell.w;
+    const int v = (fn / cell.cols) * cell.h;
+    const float x1 = x + width * scale;
+    const float y1 = y + cell.h * scale;
+    const float xy[8] = {x, y, x1, y, x, y1, x1, y1};
+    const float u0 = (float)(u + cell.off_u);
+    const float v0 = (float)(v + cell.off_v);
+    const float u1 = (float)(u + width - cell.off_u);
+    const float v1 = (float)(v + cell.h - cell.off_v);
+    const float uv[8] = {u0, v0, u1, v0, u0, v1, u1, v1};
+
+    ReiPan_RendererSetGs2dDepth(z);
+    ReiPan_RendererDrawFontQuadTex0(font_bank_host, (const sceGsTex0 *)&font_tex0_host,
+                                    (const sceGsTex1 *)GetGsRegCached(SCE_GS_TEX1_1),
+                                    xy, uv, r, g, b, a);
+}
+
 // One glyph: a SPRITE of cell `fn` (row-major, msg_font_cell[type]) with its
 // top-left at screen pixel x, y (origin top-left, 640x448), cell-sized. Subtract mode inverts the colour.
 // FF3 0x0020c628; FF2 SetFontPat (FF3: one cell table, centred y, no
@@ -256,42 +278,130 @@ static u_long *SetFontPat(u_long *pbuf, int type, int pri, int fn, int x, int y,
     q[18] = z;
     q[19] = 0;
 
-    // PC: the same quad on the renderer (the packet above is not executed).
-    // Corners TL, TR, BL, BR in screen pixels; UVs in texels. x, y are
-    // already screen pixels: XYOFFSET_1 is (0x6c0, 0x720), so px / py above
-    // land on pixel (x, y), not on the centre-relative (x + 320, y + 224) of
-    // g2d_draw.c's 2048-based packets.
-    {
-        float xy[8];
-        float uv[8];
-        float x0 = (float)x;
-        float y0 = (float)y;
-        float x1 = x0 + (float)cell->w;
-        float y1 = y0 + (float)cell->h;
-        float u0 = (float)(du + cell->off_u);
-        float v0 = (float)(dv + cell->off_v);
-        float u1 = (float)(du + cell->w - cell->off_u);
-        float v1 = (float)(dv + cell->h - cell->off_v);
-
-        xy[0] = x0;  xy[1] = y0;  uv[0] = u0;  uv[1] = v0;
-        xy[2] = x1;  xy[3] = y0;  uv[2] = u1;  uv[3] = v0;
-        xy[4] = x0;  xy[5] = y1;  uv[4] = u0;  uv[5] = v1;
-        xy[6] = x1;  xy[7] = y1;  uv[6] = u1;  uv[7] = v1;
-
-        ReiPan_RendererSetGs2dDepth(z);
-        ReiPan_RendererDrawFontQuadTex0(font_bank_host, (const sceGsTex0 *)&font_tex0_host,
-                                        (const sceGsTex1 *)GetGsRegCached(SCE_GS_TEX1_1),
-                                        xy, uv, (u_char)q[0], (u_char)q[1], (u_char)q[2], a);
-    }
+    // The packet is not executed on PC. x and y already use the screen origin.
+    DrawFontCell(*cell, fn, z, (float)x, (float)y, 1.0f, cell->w,
+                 (u_char)q[0], (u_char)q[1], (u_char)q[2], a);
 
     return pbuf + 12;
 }
+
+#ifdef REIPAN_SLPS_25544_CHS
+// Unused glyph indices below the message control codes.
+enum SlpsPrompt : u_char
+{
+    SLPS_PROMPT_SKIP = FONT_W_NUM,
+    SLPS_PROMPT_CONFIRM,
+    SLPS_PROMPT_CANCEL,
+    SLPS_PROMPT_ALBUM_ERASE,
+    SLPS_PROMPT_ALBUM_MENU,
+    SLPS_PROMPT_L1,
+    SLPS_PROMPT_R1,
+    SLPS_PROMPT_FLASH,
+    SLPS_PROMPT_SHUTTER
+};
+
+static bool IsSlpsPrompt(int bank, u_char fn)
+{
+    return use_chs_font_widths && fn >= SLPS_PROMPT_SKIP && fn <= SLPS_PROMPT_SHUTTER &&
+           (bank == 0 || (bank == 8 && fn == SLPS_PROMPT_CANCEL));
+}
+
+static ReiPan_InputPrompt GetSlpsPrompt(u_char fn)
+{
+    unsigned int mask;
+    switch (fn)
+    {
+    case SLPS_PROMPT_CONFIRM: mask = pad_key[PAD_KEY_OK]; break;
+    case SLPS_PROMPT_CANCEL: mask = pad_key[PAD_KEY_CANCEL]; break;
+    case SLPS_PROMPT_ALBUM_ERASE: mask = 0x20; break;
+    case SLPS_PROMPT_ALBUM_MENU: mask = 0x80; break;
+    case SLPS_PROMPT_L1: mask = 0x04; break;
+    case SLPS_PROMPT_R1: mask = 0x08; break;
+    case SLPS_PROMPT_FLASH: mask = pad_key[PAD_KEY_18]; break;
+    case SLPS_PROMPT_SHUTTER: mask = pad_key[PAD_KEY_06]; break;
+    default: mask = 0; break;
+    }
+
+    // Low eight bits of pad_wrk.held mapped to ReiPan's logical button order.
+    static const int buttons[] = {9, 11, 8, 10, 4, 7, 5, 6};
+    for (unsigned int i = 0; i < sizeof(buttons) / sizeof(buttons[0]); i++)
+        if (mask & (1u << i))
+            return ReiPan_InputGetButtonPrompt(buttons[i]);
+    return {REIPAN_PROMPT_TEXT, "-"};
+}
+
+static u_char PromptGlyph(unsigned char c)
+{
+    if (c >= 'A' && c <= 'Z')
+        return 0x01 + c - 'A';
+    if (c >= 'a' && c <= 'z')
+        return 0x1b + c - 'a';
+    if (c >= '0' && c <= '9')
+        return 0x3f + c - '0';
+    if (c == ' ')
+        return 0;
+    return 0x4d;
+}
+
+static void DrawMessagePrompt(const DISP_STR &disp, ReiPan_InputPrompt prompt, int advance)
+{
+    const MSG_FONT_CELL &cell = msg_font_cell[1];
+    const u_int z = 0xfffff - (disp.pri & 0xfffff);
+    const u_char r = msg_subtract ? 0xff - disp.r : disp.r;
+    const u_char g = msg_subtract ? 0xff - disp.g : disp.g;
+    const u_char b = msg_subtract ? 0xff - disp.b : disp.b;
+    if (prompt.symbol != REIPAN_PROMPT_TEXT)
+    {
+        const float scale = advance < cell.w ? (float)advance / cell.w : 1.0f;
+        const float x = disp.pos_x + (advance - cell.w * scale) * 0.5f;
+        const float y = disp.pos_y + cell.h * (1.0f - scale) * 0.5f;
+        const u_char glyph = 0x49 + prompt.symbol - REIPAN_PROMPT_CIRCLE;
+        DrawFontCell(cell, glyph, z, x, y, scale, cell.w, r, g, b, disp.alpha);
+        return;
+    }
+
+    const auto glyph_width = [&cell](u_char glyph) {
+        const int width = GetFontSize(0, glyph);
+        return glyph == 0 ? 6 : (width > 0 && width <= cell.w ? width : cell.w);
+    };
+    int width = 0;
+    for (const char *p = prompt.text; *p; ++p)
+        width += glyph_width(PromptGlyph(*p));
+    if (width == 0 || advance <= 2)
+        return;
+
+    // Keep the original button's advance, including in fixed-position guides.
+    const float fit = (float)(advance - 2) / width;
+    const float scale = fit < 0.9f ? fit : 0.9f;
+    float x = disp.pos_x + (advance - width * scale) * 0.5f;
+    const float y = disp.pos_y + cell.h * (1.0f - scale) * 0.5f;
+    for (const char *p = prompt.text; *p; ++p)
+    {
+        const u_char glyph = PromptGlyph(*p);
+        const int glyph_w = glyph_width(glyph);
+        if (glyph != 0)
+            DrawFontCell(cell, glyph, z, x, y, scale, glyph_w, r, g, b, disp.alpha);
+        x += glyph_w * scale;
+    }
+}
+#endif
 
 // Glyph fn of `bank` at the record's pen, in its colour and alpha.
 // FF3 0x0020c7b8; FF2 SetMsgFont.
 
 static void SetMsgFont(u_long **ppbuf, DISP_STR *disp, int bank, u_char fn)
 {
+#ifdef REIPAN_SLPS_25544_CHS
+    if (IsSlpsPrompt(bank, fn))
+    {
+        if (fn != SLPS_PROMPT_SKIP)
+        {
+            *ppbuf = SetFontTex(*ppbuf, fntdat[0].tex0, 0);
+            DrawMessagePrompt(*disp, GetSlpsPrompt(fn), GetFontSize(bank, fn));
+        }
+        return;
+    }
+#endif
     *ppbuf = SetFontTex(*ppbuf, fntdat[bank].tex0, bank);
     *ppbuf = SetFontPat(*ppbuf, 1, disp->pri, fn, disp->pos_x, disp->pos_y, (u_char)disp->r,
                         (u_char)disp->g, (u_char)disp->b, (u_char)disp->alpha);
@@ -1147,6 +1257,20 @@ int MsgGetLineWidth(u_char *str, u_char **next)
 
 u_char GetFontSize(u_char bank, u_char fn)
 {
+#ifdef REIPAN_SLPS_25544_CHS
+    if (IsSlpsPrompt(bank, fn))
+    {
+        if (fn == SLPS_PROMPT_SKIP)
+            return 0;
+        if (fn == SLPS_PROMPT_CANCEL)
+            return chs_font_widths[8][0x28];
+        if (fn == SLPS_PROMPT_L1)
+            return chs_font_widths[0][0x0c] + chs_font_widths[0][0x40];
+        if (fn == SLPS_PROMPT_R1)
+            return chs_font_widths[0][0x12] + chs_font_widths[0][0x40];
+        return 24;
+    }
+#endif
     if (bank >= FNTDAT_BANK_NUM || fn >= FONT_W_NUM)
         return 24;
 #ifdef REIPAN_SLPS_25544_CHS
@@ -1156,10 +1280,57 @@ u_char GetFontSize(u_char bank, u_char fn)
     return (u_char)font_w_tbl[bank][fn];
 }
 
-// Message `msg_id` of group `msg_type` in the loaded MSG_OBJ: two tables of
-// offsets from the data start. FF3 0x0020de38; FF2 GetMsgDataAddr (asserts
-// dropped, data at 0xfed000 instead of 0xd9ec00).
+#ifdef REIPAN_SLPS_25544_CHS
+static void ApplySlpsButtonPrompts(int group, int id, u_char *message, unsigned int length)
+{
+    // Offsets within the SLPS_255.44 messages. Some crosses are redactions
+    // in documents, so only the confirmed control instructions are patched.
+    static const struct
+    {
+        int group;
+        int id;
+        unsigned int offset;
+        u_char original;
+        SlpsPrompt prompt;
+        u_char trailing;
+    } changes[] = {
+        {0x04, 0x0b,  20, 0x49, SLPS_PROMPT_CONFIRM, 0},
+        {0x04, 0x26,  59, 0x49, SLPS_PROMPT_CONFIRM, 0},
+        {0x1c, 0x5c,  80, 0x4c, SLPS_PROMPT_FLASH, 0},
+        {0x1c, 0x5c, 227, 0x4c, SLPS_PROMPT_FLASH, 0},
+        {0x1c, 0x5f,  76, 0x4c, SLPS_PROMPT_FLASH, 0},
+        {0x1c, 0x62,  78, 0x49, SLPS_PROMPT_SHUTTER, 0},
+        {0x1c, 0x62, 106, 0x49, SLPS_PROMPT_SHUTTER, 0},
+        {0x53, 0x0f, 118, 0x49, SLPS_PROMPT_CONFIRM, 0},
+        {0x59, 0x32,  72, 0x4c, SLPS_PROMPT_ALBUM_MENU, 0},
+        {0x59, 0x35,  20, 0x49, SLPS_PROMPT_CONFIRM, 0},
+        {0x59, 0x35,  49, 0x4b, SLPS_PROMPT_ALBUM_ERASE, 0},
+        {0x59, 0x35,  75, 0x4c, SLPS_PROMPT_ALBUM_MENU, 0},
+        {0x59, 0x35,  92, 0x28, SLPS_PROMPT_CANCEL, 0},
+        {0x59, 0x35, 121, 0x0c, SLPS_PROMPT_L1, 0x40},
+        {0x59, 0x35, 125, 0x12, SLPS_PROMPT_R1, 0x40},
+    };
 
+    for (const auto &change : changes)
+    {
+        if (change.group != group || change.id != id || change.offset >= length)
+            continue;
+        u_char *at = message + change.offset;
+        if (*at != change.original)
+            continue;
+        if (change.trailing != 0)
+        {
+            if (change.offset + 1 >= length || at[1] != change.trailing)
+                continue;
+            at[1] = SLPS_PROMPT_SKIP;
+        }
+        *at = change.prompt;
+    }
+}
+#endif
+
+// Message `msg_id` of group `msg_type` in the loaded MSG_OBJ: two tables of
+// offsets from the data start. FF3 0x0020de38; FF2 GetMsgDataAddr.
 static u_char *FindMessage(u_char *top, unsigned int size, int type, int id)
 {
     if (top == nullptr || size < 8 || type < 0 || id < 0)
@@ -1213,7 +1384,13 @@ static u_char *FindMessage(u_char *top, unsigned int size, int type, int id)
     {
         const u_char code = top[at++];
         if (code == MSG_CODE_END)
+        {
+#ifdef REIPAN_SLPS_25544_CHS
+            if (use_chs_font_widths)
+                ApplySlpsButtonPrompts(type, id, top + start, at - start - 1);
+#endif
             return top + start;
+        }
         if (code == MSG_CODE_ARRANGE)
             at += 2;
         else if ((code >= MSG_CODE_BANK1 && code <= MSG_CODE_BANK9) ||

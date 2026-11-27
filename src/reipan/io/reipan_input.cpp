@@ -27,6 +27,7 @@
 #define REIPAN_SRC_FULL 32767
 
 static SDL_Gamepad *s_gamepad;
+static bool         s_prompt_gamepad;
 static int          s_ready;
 static int          s_gamepad_mappings_attempted;
 
@@ -247,6 +248,7 @@ static void CloseGamepad(void)
         ReiPan_HapticsSetGamepad(0);    /* stops the motors, so while it is open */
         SDL_CloseGamepad(s_gamepad);
         s_gamepad = 0;
+        s_prompt_gamepad = false;
         ReiPan_GyroSetGamepad(0);
     }
 }
@@ -389,6 +391,7 @@ static int SelectGamepad(void)
     s_gamepad = SDL_OpenGamepad(chosen);
     if (s_gamepad != 0)
     {
+        s_prompt_gamepad = true;
         SDL_Log("ReiPan: using gamepad \"%s\"", SDL_GetGamepadName(s_gamepad));
         ReiPan_GyroSetGamepad(s_gamepad);
         ReiPan_HapticsSetGamepad(s_gamepad);
@@ -447,7 +450,154 @@ static void AdvanceStickRamps(void)
     }
 }
 
+void ReiPan_InputPromptEvent(const SDL_Event *event)
+{
+    switch (event->type)
+    {
+    case SDL_EVENT_KEY_DOWN:
+        if (!event->key.repeat &&
+            !((event->key.mod & SDL_KMOD_ALT) != 0 &&
+              (event->key.key == SDLK_RETURN || event->key.key == SDLK_KP_ENTER)))
+            s_prompt_gamepad = false;
+        break;
+    case SDL_EVENT_MOUSE_BUTTON_DOWN:
+    case SDL_EVENT_MOUSE_WHEEL:
+        s_prompt_gamepad = false;
+        break;
+    case SDL_EVENT_MOUSE_MOTION:
+        if (event->motion.xrel != 0.0f || event->motion.yrel != 0.0f)
+            s_prompt_gamepad = false;
+        break;
+    case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
+        if (s_gamepad != nullptr && event->gbutton.which == SDL_GetGamepadID(s_gamepad))
+            s_prompt_gamepad = true;
+        break;
+    case SDL_EVENT_GAMEPAD_AXIS_MOTION:
+        if (s_gamepad != nullptr && event->gaxis.which == SDL_GetGamepadID(s_gamepad) &&
+            AbsInt(event->gaxis.value) > REIPAN_SRC_FULL / 2)
+            s_prompt_gamepad = true;
+        break;
+    }
+}
+
+static const char *KeyPromptName(SDL_Scancode code)
+{
+    static const char *const numpad_digits[] = {
+        "Num1", "Num2", "Num3", "Num4", "Num5",
+        "Num6", "Num7", "Num8", "Num9", "Num0"
+    };
+    if (code >= SDL_SCANCODE_KP_1 && code <= SDL_SCANCODE_KP_0)
+        return numpad_digits[code - SDL_SCANCODE_KP_1];
+
+    switch (code)
+    {
+    case SDL_SCANCODE_SPACE: return "Spc";
+    case SDL_SCANCODE_LSHIFT: return "LSh";
+    case SDL_SCANCODE_RSHIFT: return "RSh";
+    case SDL_SCANCODE_LCTRL: return "LCtrl";
+    case SDL_SCANCODE_RCTRL: return "RCtrl";
+    case SDL_SCANCODE_LALT: return "LAlt";
+    case SDL_SCANCODE_RALT: return "RAlt";
+    case SDL_SCANCODE_LGUI: return "LWin";
+    case SDL_SCANCODE_RGUI: return "RWin";
+    case SDL_SCANCODE_RETURN: return "Enter";
+    case SDL_SCANCODE_ESCAPE: return "Esc";
+    case SDL_SCANCODE_BACKSPACE: return "Bksp";
+    case SDL_SCANCODE_PAGEUP: return "PgUp";
+    case SDL_SCANCODE_PAGEDOWN: return "PgDn";
+    case SDL_SCANCODE_DELETE: return "Del";
+    case SDL_SCANCODE_INSERT: return "Ins";
+    case SDL_SCANCODE_MINUS: return "Minus";
+    case SDL_SCANCODE_EQUALS: return "Eq";
+    case SDL_SCANCODE_LEFTBRACKET: return "LBrk";
+    case SDL_SCANCODE_RIGHTBRACKET: return "RBrk";
+    case SDL_SCANCODE_BACKSLASH: return "BSl";
+    case SDL_SCANCODE_NONUSBACKSLASH: return "IntSl";
+    case SDL_SCANCODE_SEMICOLON: return "Semi";
+    case SDL_SCANCODE_APOSTROPHE: return "Quote";
+    case SDL_SCANCODE_GRAVE: return "Grave";
+    case SDL_SCANCODE_COMMA: return "Comma";
+    case SDL_SCANCODE_PERIOD: return "Dot";
+    case SDL_SCANCODE_SLASH: return "Slash";
+    case SDL_SCANCODE_KP_PLUS: return "NumAdd";
+    case SDL_SCANCODE_KP_MINUS: return "NumSub";
+    case SDL_SCANCODE_KP_MULTIPLY: return "NumMul";
+    case SDL_SCANCODE_KP_DIVIDE: return "NumDiv";
+    case SDL_SCANCODE_KP_PERIOD: return "NumDot";
+    case SDL_SCANCODE_KP_ENTER: return "NumEnt";
+    default: return SDL_GetScancodeName(code);
+    }
+}
+
+static ReiPan_InputPrompt PadButtonPrompt(SDL_GamepadButton button)
+{
+    const SDL_GamepadButtonLabel label = s_gamepad != nullptr ?
+        SDL_GetGamepadButtonLabel(s_gamepad, button) :
+        SDL_GetGamepadButtonLabelForType(SDL_GAMEPAD_TYPE_PS5, button);
+    switch (label)
+    {
+    case SDL_GAMEPAD_BUTTON_LABEL_A: return {REIPAN_PROMPT_TEXT, "A"};
+    case SDL_GAMEPAD_BUTTON_LABEL_B: return {REIPAN_PROMPT_TEXT, "B"};
+    case SDL_GAMEPAD_BUTTON_LABEL_X: return {REIPAN_PROMPT_TEXT, "X"};
+    case SDL_GAMEPAD_BUTTON_LABEL_Y: return {REIPAN_PROMPT_TEXT, "Y"};
+    case SDL_GAMEPAD_BUTTON_LABEL_CIRCLE: return {REIPAN_PROMPT_CIRCLE, nullptr};
+    case SDL_GAMEPAD_BUTTON_LABEL_CROSS: return {REIPAN_PROMPT_CROSS, nullptr};
+    case SDL_GAMEPAD_BUTTON_LABEL_TRIANGLE: return {REIPAN_PROMPT_TRIANGLE, nullptr};
+    case SDL_GAMEPAD_BUTTON_LABEL_SQUARE: return {REIPAN_PROMPT_SQUARE, nullptr};
+    default: break;
+    }
+
+    const bool ps = ReiPan_InputGamepadUsesPlayStationPrompts();
+    switch (button)
+    {
+    case SDL_GAMEPAD_BUTTON_LEFT_SHOULDER: return {REIPAN_PROMPT_TEXT, ps ? "L1" : "LB"};
+    case SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER: return {REIPAN_PROMPT_TEXT, ps ? "R1" : "RB"};
+    case SDL_GAMEPAD_BUTTON_LEFT_STICK: return {REIPAN_PROMPT_TEXT, ps ? "L3" : "LS"};
+    case SDL_GAMEPAD_BUTTON_RIGHT_STICK: return {REIPAN_PROMPT_TEXT, ps ? "R3" : "RS"};
+    case SDL_GAMEPAD_BUTTON_START: return {REIPAN_PROMPT_TEXT, ps ? "Start" : "Menu"};
+    case SDL_GAMEPAD_BUTTON_BACK: return {REIPAN_PROMPT_TEXT, ps ? "Select" : "View"};
+    case SDL_GAMEPAD_BUTTON_DPAD_UP: return {REIPAN_PROMPT_TEXT, "Up"};
+    case SDL_GAMEPAD_BUTTON_DPAD_DOWN: return {REIPAN_PROMPT_TEXT, "Down"};
+    case SDL_GAMEPAD_BUTTON_DPAD_LEFT: return {REIPAN_PROMPT_TEXT, "Left"};
+    case SDL_GAMEPAD_BUTTON_DPAD_RIGHT: return {REIPAN_PROMPT_TEXT, "Right"};
+    default: return {REIPAN_PROMPT_TEXT, SDL_GetGamepadStringForButton(button)};
+    }
+}
+
+static const char *PadAxisPromptName(SDL_GamepadAxis axis, int direction)
+{
+    switch (axis)
+    {
+    case SDL_GAMEPAD_AXIS_LEFT_TRIGGER: return ReiPan_InputGamepadUsesPlayStationPrompts() ? "L2" : "LT";
+    case SDL_GAMEPAD_AXIS_RIGHT_TRIGGER: return ReiPan_InputGamepadUsesPlayStationPrompts() ? "R2" : "RT";
+    case SDL_GAMEPAD_AXIS_LEFTX: return direction < 0 ? "LS L" : "LS R";
+    case SDL_GAMEPAD_AXIS_LEFTY: return direction < 0 ? "LS U" : "LS D";
+    case SDL_GAMEPAD_AXIS_RIGHTX: return direction < 0 ? "RS L" : "RS R";
+    case SDL_GAMEPAD_AXIS_RIGHTY: return direction < 0 ? "RS U" : "RS D";
+    default: return nullptr;
+    }
+}
+
 extern "C" {
+
+int ReiPan_InputUsesGamepadPrompts(void)
+{
+    return s_gamepad != nullptr && s_prompt_gamepad;
+}
+
+int ReiPan_InputGamepadUsesPlayStationPrompts(void)
+{
+    if (s_gamepad == nullptr)
+        return 1;
+    const SDL_GamepadType type = SDL_GetGamepadType(s_gamepad);
+    return type == SDL_GAMEPAD_TYPE_PS3 || type == SDL_GAMEPAD_TYPE_PS4 ||
+           type == SDL_GAMEPAD_TYPE_PS5;
+}
+
+ReiPan_InputPrompt ReiPan_InputGetGamepadButtonPrompt(int button)
+{
+    return PadButtonPrompt(static_cast<SDL_GamepadButton>(button));
+}
 
 int ReiPan_InputInit(void)
 {
@@ -696,6 +846,44 @@ int ReiPan_InputGetButtonBinding(int button, ReiPan_InputButtonBinding *out)
     EnsureBindings();
     *out = s_buttons[button];
     return 1;
+}
+
+ReiPan_InputPrompt ReiPan_InputGetButtonPrompt(int button)
+{
+    const ReiPan_InputPrompt unbound = {REIPAN_PROMPT_TEXT, "-"};
+    if (button < 0 || button >= REIPAN_PAD_BUTTON_COUNT)
+        return unbound;
+
+    EnsureBindings();
+    ReiPan_InputPrompt fallback = {};
+    for (const ReiPan_InputSource &source : s_buttons[button].src)
+    {
+        ReiPan_InputPrompt prompt = {};
+        switch (source.kind)
+        {
+        case REIPAN_SRC_KEY:
+            prompt.text = KeyPromptName(static_cast<SDL_Scancode>(source.code));
+            break;
+        case REIPAN_SRC_PAD_BUTTON:
+            if (s_gamepad != nullptr &&
+                SDL_GamepadHasButton(s_gamepad, static_cast<SDL_GamepadButton>(source.code)))
+                prompt = PadButtonPrompt(static_cast<SDL_GamepadButton>(source.code));
+            break;
+        case REIPAN_SRC_PAD_AXIS:
+            if (s_gamepad != nullptr &&
+                SDL_GamepadHasAxis(s_gamepad, static_cast<SDL_GamepadAxis>(source.code)))
+                prompt.text = PadAxisPromptName(static_cast<SDL_GamepadAxis>(source.code), source.dir);
+            break;
+        }
+        if (prompt.symbol == REIPAN_PROMPT_TEXT && (prompt.text == nullptr || *prompt.text == '\0'))
+            continue;
+
+        if (s_prompt_gamepad == (source.kind != REIPAN_SRC_KEY))
+            return prompt;
+        if (fallback.symbol == REIPAN_PROMPT_TEXT && fallback.text == nullptr)
+            fallback = prompt;
+    }
+    return fallback.symbol == REIPAN_PROMPT_TEXT && fallback.text == nullptr ? unbound : fallback;
 }
 
 int ReiPan_InputSetButtonBinding(int button,

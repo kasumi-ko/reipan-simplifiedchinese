@@ -156,7 +156,6 @@ struct RmlState
     bool trigger_held[2] = {false, false};
     /* Which device the player last used: the pad, for the button prompts,
      * and the mouse, for whether hover may move a cursor. */
-    bool using_pad = false;
     bool using_mouse = false;
 
     /* Images made at run time, by name -- see SetGeneratedImage(). */
@@ -901,7 +900,6 @@ void DispatchEvent(const SDL_Event &event)
     {
     case SDL_EVENT_MOUSE_MOTION:
     {
-        g_rml.using_pad = false;
         g_rml.using_mouse = true;
         const Rml::Vector2i mouse = ToContext(event.motion.x, event.motion.y);
         context->ProcessMouseMove(mouse.x, mouse.y, KeyModifiers());
@@ -918,7 +916,6 @@ void DispatchEvent(const SDL_Event &event)
         {
             break;
         }
-        g_rml.using_pad = false;
         g_rml.using_mouse = true;
         const Rml::Vector2i mouse = ToContext(event.button.x, event.button.y);
         context->ProcessMouseMove(mouse.x, mouse.y, KeyModifiers());
@@ -952,7 +949,6 @@ void DispatchEvent(const SDL_Event &event)
         break;
     case SDL_EVENT_KEY_DOWN:
     {
-        g_rml.using_pad = false;
         g_rml.using_mouse = false;
         const Rml::Input::KeyIdentifier key = ToRmlKey(event.key.key);
         if (!(event.key.repeat && IsActivationKey(key)))
@@ -970,7 +966,6 @@ void DispatchEvent(const SDL_Event &event)
     case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
     case SDL_EVENT_GAMEPAD_BUTTON_UP:
     {
-        g_rml.using_pad = true;
         g_rml.using_mouse = false;
         const int direction = PadDirection(event.gbutton.button);
         if (direction >= 0)
@@ -1012,7 +1007,6 @@ void DispatchEvent(const SDL_Event &event)
             if (held != g_rml.trigger_held[side])
             {
                 g_rml.trigger_held[side] = held;
-                g_rml.using_pad = true;
                 g_rml.using_mouse = false;
                 const Rml::Input::KeyIdentifier key =
                     side != 0 ? Rml::Input::KI_END : Rml::Input::KI_HOME;
@@ -1033,7 +1027,6 @@ void DispatchEvent(const SDL_Event &event)
         }
         if (SDL_fabsf(value) > kStickPress)
         {
-            g_rml.using_pad = true;
             g_rml.using_mouse = false;
         }
         UpdateStickNavigation();
@@ -1301,7 +1294,7 @@ bool WantsInput()
 
 bool UsingPad()
 {
-    return g_rml.using_pad;
+    return ReiPan_InputUsesGamepadPrompts() != 0;
 }
 
 bool PointerActive()
@@ -1311,74 +1304,20 @@ bool PointerActive()
 
 const char *PadButtonName(SDL_GamepadButton button)
 {
-    /* The opened pad's own lettering when there is one; the game's DUALSHOCK
-     * names otherwise. */
-    SDL_Gamepad *pad = nullptr;
-    int count = 0;
-    SDL_JoystickID *pads = SDL_GetGamepads(&count);
-    for (int i = 0; pads != nullptr && i < count && pad == nullptr; i++)
+    const ReiPan_InputPrompt prompt = ReiPan_InputGetGamepadButtonPrompt(button);
+    switch (prompt.symbol)
     {
-        pad = SDL_GetGamepadFromID(pads[i]);
-    }
-    SDL_free(pads);
-
-    bool playstation = true;
-    if (pad != nullptr)
-    {
-        switch (SDL_GetGamepadButtonLabel(pad, button))
-        {
-        case SDL_GAMEPAD_BUTTON_LABEL_A: return "A";
-        case SDL_GAMEPAD_BUTTON_LABEL_B: return "B";
-        case SDL_GAMEPAD_BUTTON_LABEL_X: return "X";
-        case SDL_GAMEPAD_BUTTON_LABEL_Y: return "Y";
-        case SDL_GAMEPAD_BUTTON_LABEL_CROSS: return "Cross";
-        case SDL_GAMEPAD_BUTTON_LABEL_CIRCLE: return "Circle";
-        case SDL_GAMEPAD_BUTTON_LABEL_SQUARE: return "Square";
-        case SDL_GAMEPAD_BUTTON_LABEL_TRIANGLE: return "Triangle";
-        default: break;
-        }
-        const SDL_GamepadType type = SDL_GetGamepadType(pad);
-        playstation = type == SDL_GAMEPAD_TYPE_PS3 ||
-                      type == SDL_GAMEPAD_TYPE_PS4 ||
-                      type == SDL_GAMEPAD_TYPE_PS5;
-    }
-
-    switch (button)
-    {
-    case SDL_GAMEPAD_BUTTON_SOUTH: return "Cross";
-    case SDL_GAMEPAD_BUTTON_EAST: return "Circle";
-    case SDL_GAMEPAD_BUTTON_WEST: return "Square";
-    case SDL_GAMEPAD_BUTTON_NORTH: return "Triangle";
-    case SDL_GAMEPAD_BUTTON_LEFT_SHOULDER: return playstation ? "L1" : "LB";
-    case SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER: return playstation ? "R1" : "RB";
-    case SDL_GAMEPAD_BUTTON_START: return playstation ? "START" : "Menu";
-    case SDL_GAMEPAD_BUTTON_BACK: return playstation ? "SELECT" : "View";
-    case SDL_GAMEPAD_BUTTON_DPAD_LEFT: return "Left";
-    case SDL_GAMEPAD_BUTTON_DPAD_RIGHT: return "Right";
-    default: return "?";
+    case REIPAN_PROMPT_CIRCLE: return "\xe2\x97\x8b";
+    case REIPAN_PROMPT_CROSS: return "\xc3\x97";
+    case REIPAN_PROMPT_TRIANGLE: return "\xe2\x96\xb3";
+    case REIPAN_PROMPT_SQUARE: return "\xe2\x96\xa1";
+    default: return prompt.text != nullptr ? prompt.text : "?";
     }
 }
 
 const char *PadTriggersName()
 {
-    SDL_Gamepad *pad = nullptr;
-    int count = 0;
-    SDL_JoystickID *pads = SDL_GetGamepads(&count);
-    for (int i = 0; pads != nullptr && i < count && pad == nullptr; i++)
-    {
-        pad = SDL_GetGamepadFromID(pads[i]);
-    }
-    SDL_free(pads);
-    if (pad != nullptr)
-    {
-        const SDL_GamepadType type = SDL_GetGamepadType(pad);
-        if (type != SDL_GAMEPAD_TYPE_PS3 && type != SDL_GAMEPAD_TYPE_PS4 &&
-            type != SDL_GAMEPAD_TYPE_PS5)
-        {
-            return "LT / RT";
-        }
-    }
-    return "L2 / R2";
+    return ReiPan_InputGamepadUsesPlayStationPrompts() ? "L2 / R2" : "LT / RT";
 }
 
 Rml::Context *GetContext()

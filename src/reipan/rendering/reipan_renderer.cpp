@@ -1,4 +1,5 @@
 #include "reipan_renderer.h"
+#include "reipan_version.h"
 #include "reipan_font_textures.h"
 #include "reipan/os/reipan_host.h"
 
@@ -4133,6 +4134,7 @@ void PumpEvents()
             ReiPan_InputQueueKeyDown(event.key.scancode);
         else if (event.type == SDL_EVENT_WINDOW_FOCUS_LOST)
             ReiPan_InputClearKeyboard();
+        ReiPan_InputPromptEvent(&event);
         /* Play's turn at it, once the menus have had theirs. */
         ReiPan_GameMouseEvent(&event, ReiPan_InputMenuPointerFree());
         ReiPan_GyroEvent(&event);
@@ -10221,7 +10223,7 @@ void CreateWindowAndDevice(void *ok)
     }
 
 #ifdef REIPAN_SLPS_25544_CHS
-    const char *window_title = "零～刺青之声～  [ReiPan]";
+    const char *window_title = "零～刺青之声～  [" REIPAN_PROJECT_NAME "]";
 #else
     const char *window_title = "ReiPan";
 #endif

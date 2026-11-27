@@ -55,6 +55,28 @@ typedef struct ReiPan_InputButtonBinding
     ReiPan_InputSource src[REIPAN_INPUT_MAX_SOURCES];
 } ReiPan_InputButtonBinding;
 
+typedef enum ReiPan_InputPromptSymbol
+{
+    REIPAN_PROMPT_TEXT,
+    REIPAN_PROMPT_CIRCLE,
+    REIPAN_PROMPT_CROSS,
+    REIPAN_PROMPT_TRIANGLE,
+    REIPAN_PROMPT_SQUARE
+} ReiPan_InputPromptSymbol;
+
+typedef struct ReiPan_InputPrompt
+{
+    ReiPan_InputPromptSymbol symbol;
+    const char *text;
+} ReiPan_InputPrompt;
+
+// The first usable binding for the current input device, or its alternative
+// on the other device. PlayStation face buttons have dedicated font glyphs.
+ReiPan_InputPrompt ReiPan_InputGetButtonPrompt(int button);
+ReiPan_InputPrompt ReiPan_InputGetGamepadButtonPrompt(int button);
+int ReiPan_InputUsesGamepadPrompts(void);
+int ReiPan_InputGamepadUsesPlayStationPrompts(void);
+
 // A stick axis takes one full-range analog source plus an optional digital pair
 // pulling either way — the generalisation of the gamepad-axis-with-keyboard-
 // fallback arrangement this layer already had.
@@ -201,6 +223,9 @@ int ReiPan_InputSourceFromString(const char *text, ReiPan_InputSource *out);
 
 #ifdef __cplusplus
 }
+
+union SDL_Event;
+void ReiPan_InputPromptEvent(const SDL_Event *event);
 #endif
 
 #endif /* REIPAN_INPUT_H */
