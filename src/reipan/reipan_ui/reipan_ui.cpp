@@ -2038,7 +2038,7 @@ void DrawGraphicsSettingsMenu()
         for (int i = 0; i < REIPAN_BACKEND_COUNT; i++)
         {
             if (ReiPan_RendererBackendIsAvailable(i) != 0 &&
-                ImGui::MenuItem(ReiPan_RendererGetBackendLabel(i), nullptr,
+                ImGui::MenuItem(Translate(ReiPan_RendererGetBackendLabel(i)).data(), nullptr,
                                 backend == i))
             {
                 ReiPan_RendererSetBackend(i);
@@ -2046,10 +2046,10 @@ void DrawGraphicsSettingsMenu()
         }
 
         const char *asked =
-            ReiPan_RendererGetBackendLabel(ReiPan_RendererGetBackend());
+            Translate(ReiPan_RendererGetBackendLabel(ReiPan_RendererGetBackend())).data();
         ImGui::TextDisabled(
             UiText("  drawing with %s"),
-            ReiPan_RendererGetBackendLabel(ReiPan_RendererGetBackendActive()));
+            Translate(ReiPan_RendererGetBackendLabel(ReiPan_RendererGetBackendActive())).data());
         switch (ReiPan_RendererGetBackendStatus())
         {
         case REIPAN_BACKEND_STATUS_RESTART:
@@ -2093,7 +2093,7 @@ void DrawGraphicsSettingsMenu()
         }
 
         ImGui::SetNextItemWidth(180.0f);
-        if (ImGui::SliderFloat(UiText("Scale"), &scale, 0.25f, 4.0f, "%.2fx"))
+        if (ImGui::SliderFloat(UiText("Scale"), &scale, 0.25f, 4.0f, UiText("%.2fx")))
         {
             ReiPan_RendererSetRenderResolution(mode, scale);
         }
@@ -2222,7 +2222,7 @@ void DrawMouseSettingsMenu()
     ImGui::BeginDisabled(!look);
     ImGui::PushItemWidth(200.0f);
     changed |= ImGui::SliderFloat(UiText("Sensitivity"), &s.sensitivity, 0.25f, 4.0f,
-                                  "%.2fx");
+                                  UiText("%.2fx"));
     ImGui::PopItemWidth();
     ImGui::EndDisabled();
     ImGui::Separator();
@@ -2320,7 +2320,7 @@ void DrawGyroSettingsMenu()
     ImGui::PushItemWidth(200.0f);
     changed |= ImGui::SliderFloat(UiText("Sensitivity"), &s.sensitivity,
                                   REIPAN_GYRO_SENSITIVITY_MIN,
-                                  REIPAN_GYRO_SENSITIVITY_MAX, "%.2fx",
+                                  REIPAN_GYRO_SENSITIVITY_MAX, UiText("%.2fx"),
                                   ImGuiSliderFlags_Logarithmic);
     if (ImGui::IsItemHovered())
     {
@@ -2484,10 +2484,10 @@ void DrawRumbleSettingsMenu()
         const char *label;
         float       value;
     } motors[] = {
-        {"left grip", status.low},
-        {"right grip", status.high},
-        {"left trigger", status.left_trigger},
-        {"right trigger", status.right_trigger},
+        {UiText("left grip"), status.low},
+        {UiText("right grip"), status.high},
+        {UiText("left trigger"), status.left_trigger},
+        {UiText("right trigger"), status.right_trigger},
     };
     for (const auto &motor : motors)
     {
@@ -2507,7 +2507,7 @@ void DrawRumbleSettingsMenu()
         {
             /* Selectable rather than MenuItem: the menu stays up to try the
              * next one. */
-            if (ImGui::Selectable(ReiPan_HapticsCueName(cue), false,
+            if (ImGui::Selectable(Translate(ReiPan_HapticsCueName(cue)).data(), false,
                                   ImGuiSelectableFlags_NoAutoClosePopups))
             {
                 ReiPan_HapticsPreview(cue);
@@ -2638,7 +2638,7 @@ void DrawCameraSettingsMenu()
     changed |= ImGui::SliderFloat(UiText("Field of view"), &s.fov_deg, 35.0f, 80.0f,
                                   UiText("%.0f deg"));
     changed |= ImGui::SliderFloat(UiText("Look speed"), &s.sensitivity, 0.25f, 3.0f,
-                                  "%.2fx");
+                                  UiText("%.2fx"));
     changed |= ImGui::SliderFloat(UiText("Smoothing"), &s.smoothing, 0.0f, 0.8f,
                                   "%.2f");
     ImGui::PopItemWidth();

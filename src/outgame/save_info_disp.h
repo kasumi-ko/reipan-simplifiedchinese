@@ -30,4 +30,9 @@ void AlbumInfoPrintAlbumNo(s_char no, s_char kind, int x, int y, int step, int a
 void AlbumInfoPrintPhotoNum(int n, int x, int y, int step, int alpha, int pri);    // FF3 0x00134b60
 void AlbumViewPhotoInfoDisp(const int *date, int x, int y, int step, int alpha, int pri); // FF3 0x00134cc8
 
+#ifdef REIPAN_SLPS_25544_CHS
+struct B2D_HOOK_ARGS;
+int AlbumInfoDrawPhotoLabel(const B2D_HOOK_ARGS *args);
+#endif
+
 #endif /* _OUTGAME_SAVE_INFO_DISP_H */

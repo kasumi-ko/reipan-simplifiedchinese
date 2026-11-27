@@ -233,7 +233,8 @@ std::string Printf(const char *format, double value)
 
 std::function<std::string(float)> Format(const char *format)
 {
-    return [format](float value) { return Printf(format, value); };
+    const char *localized = Translate(format).data();
+    return [localized](float value) { return Printf(localized, value); };
 }
 
 std::function<std::string(float)> Percent(float scale)

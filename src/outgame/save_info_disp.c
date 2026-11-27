@@ -10,6 +10,8 @@
 #include "common/cmn_util.h"            // NumGetDigits
 #include "graphics/graph2d/message.h"   // GetMsgDataAddr, MsgGetLineWidth, PrintMsg_ArrangeOneLine, PrintNumber_N
 #include "graphics/graph2d/tim2.h"      // Tim2GetFirstPicture, MakeTim2SendPacket_3Dpkt
+#include "graphics/motion/anicode.h"
+#include "system/b2d/B2dCtl.h"
 
 #define SAVE_INFO_COL   0x2d            // colour label of every text here
 
@@ -168,6 +170,19 @@ void AlbumInfoPrintCardSlot(int port, int cx, int y, int w, int alpha, int pri)
 {
     SaveInfoPrintCardSlot(port, cx, y, w, alpha, pri);
 }
+
+#ifdef REIPAN_SLPS_25544_CHS
+int AlbumInfoDrawPhotoLabel(const B2D_HOOK_ARGS *args)
+{
+    // "照片" from SLPS_255.44 message 0x1f/0x0c.
+    static u_char text[] = {0x7e, 0x75, MSG_CODE_END};
+    SetCurColorRGB(0x4a, 0x3a, 0x2b);
+    PrintMsg_ArrangeOneLine(text, (int)(args->t1 + args->a3) - 5, (int)args->t2 + 5,
+                           MSG_COL_CURRENT, (int)args->stack[1], 4, 0, 0, 1);
+    SetDefaultGsDrawState();
+    return 0;
+}
+#endif
 
 // Album message 0x26, no + 1, message 0x27, then message `kind` (0x2c for
 // -2, 0x2b for -1).

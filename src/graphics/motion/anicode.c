@@ -1035,12 +1035,34 @@ CcmLoadingNormal::CcmLoadingNormal(int file_no) : CcmLoading(file_no)
     alpha = 0;
 }
 
+#ifdef REIPAN_SLPS_25544_CHS
+static int StoryLoadingDrawLabel(const B2D_HOOK_ARGS *args)
+{
+    // "正在读取" from SLPS_255.44 message 0x83/0x20.
+    static u_char text[] = {0xf1, 0xbf, 0x57, 0xf3, 0x4c, 0xf1, 0x97, MSG_CODE_END};
+    SetCurColorPacked((u_int)args->stack[2]);
+    PrintMsg_ArrangeOneLine(text, (int)(args->t1 + args->a3) - 5,
+                           (int)args->t2 + ((int)args->t0 - 24) / 2,
+                           MSG_COL_CURRENT, (int)args->stack[1], 4, 0, 0, 1);
+    SetDefaultGsDrawState();
+    return 0;
+}
+#endif
+
 // ──────────────────────────────────────────────────────────────────────
 // FF3 0x0014ec50 (no Ghidra function)
 void CcmLoadingNormal::OnReady(void)
 {
-    B2dCtlSetAlpha(BpCtlGetHandleByFileNo(file), 0);
-    BpPlayLabel(BpCtlGetHandleByFileNo(file), "NewLabel_0");    /* data 0x350d90 */
+    const int handle = BpCtlGetHandleByFileNo(file);
+    B2dCtlSetAlpha(handle, 0);
+    BpPlayLabel(handle, "NewLabel_0");                         /* data 0x350d90 */
+#ifdef REIPAN_SLPS_25544_CHS
+    static const B2D_HOOK_REC hooks[] = {
+        { StoryLoadingDrawLabel, 0, 1002, nullptr },
+        { nullptr,              -1, -1,   nullptr },
+    };
+    B2dSetHookList(handle, hooks);
+#endif
 }
 
 // ──────────────────────────────────────────────────────────────────────

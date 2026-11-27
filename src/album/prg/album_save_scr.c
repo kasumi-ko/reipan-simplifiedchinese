@@ -515,6 +515,9 @@ static const B2D_HOOK_REC album_save_scr_info_hooks[] =     // ROM 0x34ec90
     { AlbumSaveScrDrawCardSlot, 0, ASS_ITEM_CARD_SLOT, nullptr },
     { AlbumSaveScrDrawPhotoNum, 0, ASS_ITEM_PHOTO_NUM, nullptr },
     { AlbumSaveScrDrawDate,     0, ASS_ITEM_DATE,      nullptr },
+#ifdef REIPAN_SLPS_25544_CHS
+    { AlbumInfoDrawPhotoLabel,  0, 0,                 "R pht" },
+#endif
     { nullptr,                 -1, -1,                 nullptr },
 };
 

@@ -1272,15 +1272,34 @@ static int DocTitleHook(const B2D_HOOK_ARGS *args)
 // FF3 0x001b1fe8 (the list, rodata 0x359258, is copied onto the stack)
 // callcheck: GetSysWrk, GetLanguage, BpCtlGetHandleByFileNo (DocMenuFile / DocMenuHandle)
 
+#ifdef REIPAN_SLPS_25544_CHS
+static int DocPhotoTabLabel(const B2D_HOOK_ARGS *args)
+{
+    // "照片" from SLPS_255.44 message 0x1f/0x0c.
+    static u_char text[] = {0x7e, 0x75, MSG_CODE_END};
+    const bool selected = DocMenuGetTab() == DOC_KIND_MAP;
+    SetCurColorRGB(selected ? 0xd3 : 0x9a, selected ? 0xc0 : 0x9d, selected ? 0x83 : 0x91);
+    PrintMsg_ArrangeOneLine(text, (int)args->t1 + (int)args->a3 / 2,
+                           (int)args->t2 + 2, MSG_COL_CURRENT, (int)args->stack[1],
+                           4, 0, 0, 2);
+    SetDefaultGsDrawState();
+    return 0;
+}
+#endif
+
 static void DocMenuSetHooks(void)
 {
-    static const B2D_HOOK_REC hooks[6] =
+    static const B2D_HOOK_REC hooks[] =
     {
         { DocNameHook,  0,  0x43d, nullptr  },
         { DocNewHook,   0,  0x447, nullptr  },
         { DocNewHook,   0,  0x45d, nullptr  },
         { DocTitleHook, 0,  0,     "R ttlL" },                  /* sdata 0x370408 */
         { DocTitleHook, 0,  0,     "R ttlR" },                  /* sdata 0x370410 */
+#ifdef REIPAN_SLPS_25544_CHS
+        { DocPhotoTabLabel, 0, 0, "R map_on" },
+        { DocPhotoTabLabel, 0, 0, "R map_off" },
+#endif
         { nullptr,      -1, -1,    nullptr  },
     };
 

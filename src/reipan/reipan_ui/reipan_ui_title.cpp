@@ -296,7 +296,7 @@ void DrawSceneList()
     int change = t.change;
     ImGui::TextUnformatted(UiText("Next scene"));
     ImGui::SameLine();
-    ImGui::RadioButton("after##change_pass", &change, REIPAN_TITLE_CHANGE_PASS);
+    ImGui::RadioButton(UiText("after##change_pass"), &change, REIPAN_TITLE_CHANGE_PASS);
     ImGui::SameLine();
     ImGui::SetNextItemWidth(em * 5.0f);
     ImGui::InputInt("##passes", &t.passes, 1, 1);
@@ -309,7 +309,7 @@ void DrawSceneList()
         t.passes = 100;
     }
     ImGui::SameLine();
-    ImGui::TextUnformatted(t.passes == 1 ? "pass of the path" : "passes of the path");
+    ImGui::TextUnformatted(t.passes == 1 ? UiText("pass of the path") : UiText("passes of the path"));
     ImGui::Indent(ImGui::CalcTextSize(UiText("Next scene")).x +
                   ImGui::GetStyle().ItemSpacing.x);
     ImGui::RadioButton(UiText("each time the title comes up##change_visit"), &change,

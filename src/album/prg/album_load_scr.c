@@ -510,6 +510,9 @@ static const B2D_HOOK_REC album_load_scr_info_hooks[] =     // ROM 0x34e910
     { AlbumLoadScrDrawCardSlot, 0, ALS_ITEM_CARD_SLOT, nullptr },
     { AlbumLoadScrDrawPhotoNum, 0, ALS_ITEM_PHOTO_NUM, nullptr },
     { AlbumLoadScrDrawDate,     0, ALS_ITEM_DATE,      nullptr },
+#ifdef REIPAN_SLPS_25544_CHS
+    { AlbumInfoDrawPhotoLabel,  0, 0,                 "R pht" },
+#endif
     { nullptr,                 -1, -1,                 nullptr },
 };
 

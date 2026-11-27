@@ -37,6 +37,7 @@
 #include "ingame/sound/snd_ctrl.h"      // SndSePlay
 #include "ingame/story_menu.h"          // StoryMenu*, IsLockTblOn
 #include "main/gphase.h"                // GetGPhaseCtrl
+#include "graphics/graph2d/message.h"
 #include "system/b2d/B2dBase.h"         // B2dNumDrawFont
 #include "system/b2d/B2dCtl.h"          // B2D_HOOK_ARGS, B2D_ITEM, B2dCtlFindItemByName
 #include "system/b2d/B2dSpr.h"          // B2dSprSetDisp, B2dSprSetPos, B2dSprFreezePartByName, B2dSprGetPartData
@@ -229,13 +230,29 @@ static int StoryMenuTopPointHook(const B2D_HOOK_ARGS *args)
     return 0;
 }
 
-// FF3 copies the five records to the stack before B2dSetHookList.
+#ifdef REIPAN_SLPS_25544_CHS
+static int StoryMenuTopHourLabel(const B2D_HOOK_ARGS *args)
+{
+    // "时" from the disc's original message font.
+    static u_char text[] = {0x91, MSG_CODE_END};
+    SetCurColorRGB(0xaa, 0x98, 0x68);
+    PrintMsg_ArrangeOneLine(text, (int)args->t1 + 4, (int)args->t2 - 1,
+                           MSG_COL_CURRENT, (int)args->stack[1], 4, 0, 0, 0);
+    SetDefaultGsDrawState();
+    return 0;
+}
+#endif
+
+// FF3 copies the records to the stack before B2dSetHookList.
 static const B2D_HOOK_REC story_top_hooks[] =
 {
     { StoryMenuTopHourHook,  0, 0x3e9, nullptr },
     { StoryMenuTopMinHook,   0, 0x3f0, nullptr },
     { StoryMenuTopSecHook,   0, 0x3f1, nullptr },
     { StoryMenuTopPointHook, 0, 0x3fb, nullptr },
+#ifdef REIPAN_SLPS_25544_CHS
+    { StoryMenuTopHourLabel, 0, 0, "R time" },
+#endif
     { nullptr,              -1,    -1, nullptr },
 };
 
