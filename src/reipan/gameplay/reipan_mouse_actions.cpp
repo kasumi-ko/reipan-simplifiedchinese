@@ -88,12 +88,10 @@ int CanRaise(const PLYR_WRK *plyr)
            !IsLockTblOn(3) && !IsLockTblOn(4);
 }
 
-void Reset()
+void ResetCameraHold()
 {
-    g_queue_len = 0;
     g_hold_engaged = 0;
     g_hold_release_pending = 0;
-    g_shutter_engaged = 0;
 }
 
 void CameraButton(const PLYR_WRK *plyr)
@@ -102,12 +100,12 @@ void CameraButton(const PLYR_WRK *plyr)
     ReiPan_GameMouseGetSettings(&s);
 
     const int pressed = ReiPan_GameMousePressed(REIPAN_MOUSE_ACT_CAMERA);
-    const int released = ReiPan_GameMouseReleased(REIPAN_MOUSE_ACT_CAMERA);
+    const int source = s.bind[REIPAN_MOUSE_ACT_CAMERA];
 
-    if (s.camera_toggle)
+    if (s.camera_toggle || source == REIPAN_MOUSE_SRC_WHEEL_UP ||
+        source == REIPAN_MOUSE_SRC_WHEEL_DOWN)
     {
-        g_hold_engaged = 0;
-        g_hold_release_pending = 0;
+        ResetCameraHold();
         if (!pressed)
         {
             return;
@@ -123,32 +121,21 @@ void CameraButton(const PLYR_WRK *plyr)
         return;
     }
 
-    /* Hold: up while held. */
-    if (pressed && !FinderUp(plyr) && !FinderRaising(plyr) && CanRaise(plyr))
+    const bool finder_active = FinderUp(plyr) || FinderRaising(plyr);
+    if (pressed && (finder_active || CanRaise(plyr)))
     {
-        Queue(pad_key[PAD_KEY_FINDER]);
+        if (!finder_active)
+            Queue(pad_key[PAD_KEY_FINDER]);
         g_hold_engaged = 1;
         g_hold_release_pending = 0;
     }
-    if (released && g_hold_engaged)
+    if (g_hold_engaged && !ReiPan_GameMouseHeld(REIPAN_MOUSE_ACT_CAMERA))
     {
         g_hold_engaged = 0;
         g_hold_release_pending = 1;
     }
-    if (g_hold_release_pending)
-    {
-        if (FinderUp(plyr))
-        {
-            /* Let go during the raise: down as soon as it is up. */
-            Queue(pad_key[PAD_KEY_FINDER_OFF]);
-            g_hold_release_pending = 0;
-        }
-        else if (!FinderRaising(plyr) && g_queue_len == 0 && g_last_shot == 0)
-        {
-            /* The raise never happened (or it is already down). */
-            g_hold_release_pending = 0;
-        }
-    }
+    if (!finder_active && g_queue_len == 0 && g_last_shot == 0)
+        ResetCameraHold();
 }
 
 } // namespace
@@ -162,7 +149,10 @@ u_short ReiPan_MouseActionPadBits(void)
     const PLYR_WRK *plyr = ingame_wrk.plyr_wrk;
     if (plyr == nullptr || !InPlay() || !ReiPan_GameMouseAvailable())
     {
-        Reset();
+        g_queue_len = 0;
+        g_shutter_engaged = 0;
+        if (plyr == nullptr || (!FinderUp(plyr) && !FinderRaising(plyr)))
+            ResetCameraHold();
         return NextShot();
     }
 
@@ -205,6 +195,11 @@ u_short ReiPan_MouseActionPadBits(void)
     }
 
     return (u_short)(held | NextShot());
+}
+
+int ReiPan_MouseActionLowerRequested(void)
+{
+    return g_hold_release_pending;
 }
 
 int ReiPan_MouseActionFilmTrg(int dir)

@@ -10,7 +10,10 @@
 
 #include "libpad.h"
 
+#include "../ingame/ingame_wrk.h"
+#include "../ingame/plyr/player.h"
 #include "../main/gphase.h"
+#include "../outgame/option.h"
 #include "../reipan/io/reipan_input.h"
 #include "../reipan/io/reipan_menu_mouse.h"
 
@@ -302,9 +305,17 @@ int scePadRead(int port, int slot, unsigned char *rdata)
     rdata[2] = (u_char)((raw_buttons >> 8) & 0x00ff);
     rdata[3] = (u_char)(raw_buttons & 0x00ff);
 
+    // Keep the keyboard movement bindings on the finder's walking stick,
+    // including when a save uses the original left-stick aiming layout.
+    const GPHASE_NODE *phase = GetGPhaseCtrl()->leaf;
+    const PLYR_WRK *plyr = ingame_wrk.plyr_wrk;
+    const bool swap_digital = phase != nullptr && (phase->id == 32 || phase->id == 33) &&
+                              plyr != nullptr && (plyr->flags & PLYR_FLG_800000) != 0 &&
+                              GetOptionWrk()->now.b13 == 0;
     for (i = 0; i < REIPAN_STICK_COUNT; i++)
     {
-        rdata[s_stick_rdata_byte[i]] = ReiPan_InputStickValue(i);
+        const int digital_axis = swap_digital ? (i + 2) % REIPAN_STICK_COUNT : i;
+        rdata[s_stick_rdata_byte[i]] = ReiPan_InputStickValue(i, digital_axis);
     }
 
     PackPressureBytes(rdata, raw_buttons, false);

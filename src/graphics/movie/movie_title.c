@@ -35,7 +35,6 @@
 #define MOVIE_TITLE_BASE_MIN_X  218.0f  // where a plate at the floor starts
 
 static MOVIE_TITLE_CTRL movie_title_ctrl;   // sbss 0x3736e0
-static void MovieTitleDrawText(u_char *text, int y, int col, char base_disp_flg, u_char alpha);
 
 #ifdef REIPAN_SLPS_25544_CHS
 struct ChineseMovieCue
@@ -55,6 +54,7 @@ static ChineseMovieCue opening_cues[] = {
     {84100, 86200, {0x63, 0xf6, 0x57, 0x81, 0x73, 0xf1, 0x74, 0xf3, 0x58, 0xf2, 0x1a, 0x65, 0x53, MSG_CODE_END}},  // 可惜什么都没拍到。
     {88950, 91450, {0xf1, 0x76, 0xf1, 0xba, 0xf3, 0x9b, 0xf0, 0x8e, 0xf2, 0xcb, 0x59, 0x71, 0x7b, 0x53, MSG_CODE_END}},  // 传闻多半就是这样。
     {91550, 93700, {0x92, 0xf0, 0x44, 0xf0, 0xb0, 0x71, 0x66, 0xf4, 0xae, 0x62, 0xf0, 0x01, 0x53, MSG_CODE_END}},  // 我先把这个搬上车。
+    {109100, 110650, {0xf1, 0x72, 0xf1, 0x73, 0xf0, 0x9e, MSG_CODE_END}},  // 优雨？
 };
 static int last_opening_caption = -1;
 #endif
@@ -172,7 +172,7 @@ void MovieTitleDispMain(int msg_type, int msg_id, int y, int msg_col,
     MovieTitleDrawText(GetMsgDataAddr(msg_type, msg_id), y, msg_col, base_disp_flg, alpha);
 }
 
-static void MovieTitleDrawText(u_char *text, int y, int col, char base_disp_flg, u_char alpha)
+void MovieTitleDrawText(u_char *text, int y, int col, char base_disp_flg, u_char alpha)
 {
     if (text == nullptr || *text == MSG_CODE_END)
         return;

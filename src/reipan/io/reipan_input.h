@@ -109,8 +109,8 @@ void ReiPan_InputClearKeyboard(void);
 int ReiPan_InputButtonHeld(int index);
 
 // Stick axis `index` (0..3) as a PS2 0..255 value (127 = centred), taking
-// whichever of the analog and digital sources shows the larger deflection.
-unsigned char ReiPan_InputStickValue(int index);
+// whichever of the analog axis and the selected digital axis shows the larger deflection.
+unsigned char ReiPan_InputStickValue(int index, int digital_index);
 unsigned char ReiPan_InputButtonPressure(int index);
 
 // Rumble the active gamepad, through io/reipan_haptics.h: the two PS2 actuator

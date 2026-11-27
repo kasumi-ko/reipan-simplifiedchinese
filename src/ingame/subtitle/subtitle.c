@@ -33,6 +33,7 @@
 #include "system/eeiop/cd_file_dat.h"           // SUBTITLE_OBJ
 #include "system/eeiop/cddat.h"                 // GetFileSize
 #include "system/eeiop/snd_3d.h"                // SND_3D_SET
+#include "system/eeiop/snd_stream.h"            // SndStreamIsFilePlaying
 #include "system/eeiop/stream_auto.h"           // StreamAuto*
 #include "system/os/eecdvd.h"                   // LoadReq
 #include "system/os/sys_heap.h"                 // GetSystemHeapWrkP
@@ -191,6 +192,29 @@ static void SubTitleUpdateStreamPosition(int stream_id, int obj_type, int obj_id
 void SubTitleMain(int subtitle_on, int check_disp)
 {
     SUBTITLE_CTRL *ctrl = &SubTitleCtrl;
+    bool opening_caption = false;
+
+#ifdef REIPAN_SLPS_25544_CHS
+    // The disc has separate takes of "ここは…", including the voice after the PSS.
+    static u_char here[] = {0x71, 0x6b, 0x59, 0xf2, 0xc0, 0xf2, 0xc0, MSG_CODE_END};
+    static bool was_visible = false;
+    if (subtitle_on)
+    {
+        const int voices[] = { EV_VOICE_REI_00_STR_STR, EV_VOICE_REI_03_STR_STR, EV_VOICE_REI_05_STR_STR };
+        for (int file : voices)
+        {
+            if (SndStreamIsFilePlaying(file))
+            {
+                if (!was_visible && SubTitleTraceEnabled())
+                    printf("[subtitle] opening voice file=%04x\n", file);
+                MovieTitleDrawText(here, SUBTITLE_DISP_Y, SUBTITLE_MSG_COL, 1, SUBTITLE_ALPHA);
+                opening_caption = true;
+                break;
+            }
+        }
+    }
+    was_visible = opening_caption;
+#endif
 
     if (ctrl->Status == SUBTITLE_STATUS_PRELOAD)
     {
@@ -246,7 +270,7 @@ void SubTitleMain(int subtitle_on, int check_disp)
             printf("[subtitle] kind=%d bank=%02x id=%d frames=%d stream=%d visible=%d enabled=%d\n",
                    ctrl->Kind, subtitle_msg_type[ctrl->Kind], msg->MsgId, msg->Frame, ctrl->StreamId,
                    visible, subtitle_on);
-        if (visible)
+        if (visible && !opening_caption)
             MovieTitleDispMain(subtitle_msg_type[ctrl->Kind], msg->MsgId, SUBTITLE_DISP_Y,
                                SUBTITLE_MSG_COL, 1, SUBTITLE_ALPHA, subtitle_on);
     }

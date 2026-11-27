@@ -30,6 +30,9 @@ extern "C" {
  * 0's held buttons by PadReadFunc before it takes the edges. */
 u_short ReiPan_MouseActionPadBits(void);
 
+/* A release stays pending while the photo or another lock blocks lowering. */
+int ReiPan_MouseActionLowerRequested(void);
+
 /* GetDirTrg()'s film change: the wheel stepped film `dir` (0 previous, 1 next)
  * this frame. */
 int ReiPan_MouseActionFilmTrg(int dir);

@@ -794,12 +794,13 @@ unsigned char ReiPan_InputButtonPressure(int index)
     return (unsigned char)(magnitude * 255 / REIPAN_SRC_FULL);
 }
 
-unsigned char ReiPan_InputStickValue(int index)
+unsigned char ReiPan_InputStickValue(int index, int digital_index)
 {
     int analog_value = 127;
     int digital_value = 127;
 
-    if (index < 0 || index >= REIPAN_PAD_STICK_COUNT || s_suppressed != 0)
+    if (index < 0 || index >= REIPAN_PAD_STICK_COUNT ||
+        digital_index < 0 || digital_index >= REIPAN_PAD_STICK_COUNT || s_suppressed != 0)
     {
         return 127;
     }
@@ -814,9 +815,9 @@ unsigned char ReiPan_InputStickValue(int index)
 
     // The ramp is signed -1..+1; 32767 rather than 32768 on the negative side
     // keeps AxisToPs2 symmetric about 127.
-    if (s_stick_ramp[index] != 0.0f)
+    if (s_stick_ramp[digital_index] != 0.0f)
     {
-        digital_value = AxisToPs2((int)(s_stick_ramp[index] * 32767.0f));
+        digital_value = AxisToPs2((int)(s_stick_ramp[digital_index] * 32767.0f));
     }
 
     return (unsigned char)((AbsInt(analog_value - 127) >= AbsInt(digital_value - 127))

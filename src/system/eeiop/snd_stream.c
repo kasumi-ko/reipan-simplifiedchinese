@@ -706,6 +706,16 @@ int SndStreamIsUse(int wrk_id)
     return snd_stream_wrk[wrk_id].status != ST_STREAM_NO_USE;
 }
 
+int SndStreamIsFilePlaying(int file_no)
+{
+    for (const SND_STREAM_WRK &wrk : snd_stream_wrk)
+    {
+        if (wrk.file_no == file_no && wrk.status == ST_STREAM_PLAYING)
+            return 1;
+    }
+    return 0;
+}
+
 // FF3 0x0026c700
 int SndStreamIsPreload(int wrk_id)
 {

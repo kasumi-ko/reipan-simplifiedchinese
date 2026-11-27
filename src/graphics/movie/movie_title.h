@@ -61,5 +61,6 @@ void MovieTitleEnd(void);                                   // FF3 0x00218f50: e
 void MovieTitleDispMain(int msg_type, int msg_id, int y, int msg_col,
                         char base_disp_flg, u_char alpha, int subtitle_on);   // FF3 0x00218f58
 void MovieTitleBaseDisp(float x, float y, float w, u_char alp, u_int pri);    // FF3 0x002190f0
+void MovieTitleDrawText(u_char *text, int y, int col, char base_disp_flg, u_char alpha);
 
 #endif /* _GRAPHICS_MOVIE_MOVIE_TITLE_H */

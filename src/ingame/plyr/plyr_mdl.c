@@ -53,6 +53,7 @@
 #include "system/os/system.h"           // GetFrameTimeScale, GetPALMode
 #include "system/pad/pad.h"             // pad_wrk
 #include "system/pad/pad_ctrl.h"        // pad_key, PAD_KEY_*, CheckPadTrgPlaySe, CheckPadNowPlaySe
+#include "reipan/gameplay/reipan_mouse_actions.h"
 #include "reipan/gameplay/reipan_over_shoulder.h"   // PC: the over-the-shoulder camera
 
 // unassigned@00229478
@@ -996,7 +997,8 @@ void PlyrFinderEndCheck(void)
     if ((plyr->flags2 & 0x3f800) != 0 || plyr->status == 1 || plyr->status == 3)
         return;
 
-    if (CheckPadTrgPlaySe(pad_key[PAD_KEY_FINDER_OFF], -1, 0))
+    if (ReiPan_MouseActionLowerRequested() ||
+        CheckPadTrgPlaySe(pad_key[PAD_KEY_FINDER_OFF], -1, 0))
         PlyrFinderModeEnd();
 }
 
