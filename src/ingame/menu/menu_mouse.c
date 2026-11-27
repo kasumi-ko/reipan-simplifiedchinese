@@ -4,6 +4,8 @@
 #include "ingame/menu/menu_mouse.h"
 
 #include "common/cmn_fade_layer.h"      // GetCmnFadeLayer, CMN_FADE_LAYER_FILE
+#include "graphics/graph2d/message.h"
+#include "graphics/motion/anicode.h"    // SetDefaultGsDrawState
 #include "system/b2d/BpCtl.h"           // BpCtlGetHandleByFileNo
 #include "main/gphase.h"                // GetGPhaseCtrl
 #include "system/os/system.h"           // GetSysWrk, SYS_WRK::GetLanguage
@@ -216,10 +218,101 @@ void MenuMouseTab(int cur, int index, const ReiPan_MenuBox *box, int dec, int in
         ReiPan_MenuMousePress(index > cur ? inc : dec);
 }
 
+#ifdef REIPAN_SLPS_25544_CHS
+struct PuzzleGuide
+{
+    const char *name;
+    int key_strip;
+    int first_key_y;
+    int row_height;
+    int buttons[3];
+};
+
+// Texel coordinates in the SLPS_255.44 guides. The navigation row and the
+// lettering stay on the original sprites. The remaining rows draw live keys.
+static const PuzzleGuide puzzle_guides[] = {
+    { "R caption_in",   33, 45, 27, { REIPAN_MENU_CROSS, REIPAN_MENU_TRIANGLE, -1 } },
+    { "R caption_next", 34, 46, 27, { REIPAN_MENU_CROSS, REIPAN_MENU_TRIANGLE, REIPAN_MENU_CIRCLE } },
+    { "R caption",      34, 50, 27, { REIPAN_MENU_CROSS, REIPAN_MENU_TRIANGLE, -1 } },
+    { "R cap_A",        32, 43, 24, { REIPAN_MENU_CROSS, REIPAN_MENU_TRIANGLE, -1 } },
+    { "R cap_B",        32, 43, 24, { REIPAN_MENU_CROSS, REIPAN_MENU_TRIANGLE, REIPAN_MENU_CIRCLE } },
+    { "R cap_C",        32, 43, 24, { REIPAN_MENU_CROSS, REIPAN_MENU_TRIANGLE, REIPAN_MENU_CIRCLE } },
+    { "R cap_1",        32, 48, 25, { REIPAN_MENU_CROSS, REIPAN_MENU_SQUARE, REIPAN_MENU_TRIANGLE } },
+    { "R cap_2",        32, 48, 25, { REIPAN_MENU_CROSS, REIPAN_MENU_TRIANGLE, -1 } },
+    { "R cap_3",        32, 48, 25, { REIPAN_MENU_CROSS, REIPAN_MENU_TRIANGLE, -1 } },
+    { "R cap_4",        32, 48, 25, { REIPAN_MENU_CROSS, REIPAN_MENU_TRIANGLE, -1 } },
+    { "R_cap",          57, 68, 26, { REIPAN_MENU_CROSS, REIPAN_MENU_TRIANGLE, -1 } },
+};
+
+static const PuzzleGuide *FindPuzzleGuide(const char *name)
+{
+    for (const PuzzleGuide &guide : puzzle_guides)
+        if (strcmp(name, guide.name) == 0)
+            return &guide;
+    return nullptr;
+}
+
+static int DrawPuzzleGuide(const B2D_HOOK_ARGS *args)
+{
+    const B2D_ITEM *item = B2dGetDrawItem();
+    const PuzzleGuide *guide = item != nullptr && item->name != nullptr
+        ? FindPuzzleGuide(item->name) : nullptr;
+    if (guide == nullptr)
+        return B2dDrawSpriteDirect(args);
+
+    const int start = guide->first_key_y - guide->row_height / 2;
+    const int end = guide->first_key_y + guide->row_height * (guide->buttons[2] >= 0 ? 2 : 1);
+    if (args->a3 <= guide->key_strip || args->t0 <= end || (args->stack[3] & 0x3000))
+        return B2dDrawSpriteDirect(args);
+
+    B2D_HOOK_ARGS navigation = *args;
+    navigation.t0 = start;
+    B2dDrawSpriteDirect(&navigation);
+
+    const int text_x = (guide->key_strip * args->t3 + 512) / 1024;
+    const int text_y = (start * args->stack[0] + 512) / 1024;
+    B2D_HOOK_ARGS lettering = *args;
+    lettering.a1 += guide->key_strip;
+    lettering.a2 += start;
+    lettering.a3 -= guide->key_strip;
+    lettering.t0 -= start;
+    lettering.t1 += text_x;
+    lettering.t2 += text_y;
+    B2dDrawSpriteDirect(&lettering);
+
+    const int height = (20 * args->stack[0] + 512) / 1024;
+    for (int i = 0; i < 3 && guide->buttons[i] >= 0; ++i)
+    {
+        const int y = ((guide->first_key_y + i * guide->row_height) * args->stack[0] + 512) / 1024;
+        const int width = guide->key_strip > 40 ? text_x / 2 : text_x - 5;
+        MsgDrawButtonPrompt(guide->buttons[i], (int)args->t1 + text_x - width - 4,
+                            (int)args->t2 + y - height / 2, width, height, (int)args->stack[1]);
+    }
+    SetDefaultGsDrawState();
+    return 0;
+}
+
+static void SetPuzzleGuideHook(int handle, const char *name)
+{
+    if (FindPuzzleGuide(name) == nullptr)
+        return;
+    B2D_ITEM *item = B2dCtlFindItemByName(handle, name);
+    if (item != nullptr)
+    {
+        static const B2D_ITEM_HOOK hook = { DrawPuzzleGuide };
+        B2dCtlSetItemHook(item, &hook);
+    }
+}
+#endif
+
 void MenuMouseGuide(int handle, const char *name, const int *buttons, int rows)
 {
     ReiPan_MenuBox box;
 
+#ifdef REIPAN_SLPS_25544_CHS
+    if (handle >= 0)
+        SetPuzzleGuideHook(handle, name);
+#endif
     ReiPan_MenuMouseBegin(0, nullptr);
     if (!ReiPan_MenuMouseNameBox(handle, name, &box))
         return;

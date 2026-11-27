@@ -159,6 +159,10 @@ void SetFontEnv(void);                                      // FF3 0x0020c498
 // SetFontEnv plus alpha/Z test and the Z buffer.
 void SetFontEnvZ(void);                                     // FF3 0x0020c510
 
+#ifdef REIPAN_SLPS_25544_CHS
+void MsgDrawButtonPrompt(int button, int x, int y, int width, int height, int alpha);
+#endif
+
 void CopyStrDToStr(DISP_STR *s, const STR_DAT *d);          // FF3 0x0020c848
 void MsgDispStrInit(DISP_STR *disp, u_char *str, int x, int y, u_char col_label, int alpha,
                     int pri, int x_wide, int y_wide);       // FF3 0x0020cb70

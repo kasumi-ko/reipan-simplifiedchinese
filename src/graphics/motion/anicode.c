@@ -1927,12 +1927,33 @@ static int SlotSelDrawChoice(const B2D_HOOK_ARGS *args)
     return 0;
 }
 
+#ifdef REIPAN_SLPS_25544_CHS
+static int SlotSelDrawTitle(const B2D_HOOK_ARGS *args)
+{
+    // The right half of the old title begins at the centre of the panel.
+    // Glyphs from SLPS_255.44 messages 0x83/0x2a and 0x59/9.
+    static u_char title[] = {0xf3, 0x4e, 0xf3, 0x4f, 0x8d, 0xf0, 0xb5, 0xf3, 0x4a, MSG_CODE_END};
+    if (B2dGetDrawItem()->id == 0x3ec && args->stack[1] > 0)
+    {
+        SetCurColorRGB(0xb0, 0xd6, 0xd0);
+        PrintMsg_ArrangeOneLine(title, (int)args->t1, (int)args->t2 + 3,
+                                MSG_COL_CURRENT, (int)args->stack[1], 4, 0, 0, 2);
+        SetDefaultGsDrawState();
+    }
+    return 0;
+}
+#endif
+
 // Item hooks of type 7 (data 0x350f08, copied to the stack).
 static const B2D_HOOK_REC slot_sel_hooks[] =
 {
     { SlotSelDrawCursor, 0, 0x3ee, nullptr },
     { SlotSelDrawChoice, 0, 0x3e9, nullptr },
     { SlotSelDrawChoice, 0, 0x3ed, nullptr },
+#ifdef REIPAN_SLPS_25544_CHS
+    { SlotSelDrawTitle,  0, 0x3ec, nullptr },
+    { SlotSelDrawTitle,  0, 0x3f2, nullptr },
+#endif
     { nullptr,          -1,    -1, nullptr },
 };
 

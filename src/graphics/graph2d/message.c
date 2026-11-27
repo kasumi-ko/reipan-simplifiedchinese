@@ -343,7 +343,8 @@ static u_char PromptGlyph(unsigned char c)
     return 0x4d;
 }
 
-static void DrawMessagePrompt(const DISP_STR &disp, ReiPan_InputPrompt prompt, int advance)
+static void DrawMessagePrompt(const DISP_STR &disp, ReiPan_InputPrompt prompt, float advance,
+                              float height = 24.0f)
 {
     const MSG_FONT_CELL &cell = msg_font_cell[1];
     const u_int z = 0xfffff - (disp.pri & 0xfffff);
@@ -352,9 +353,11 @@ static void DrawMessagePrompt(const DISP_STR &disp, ReiPan_InputPrompt prompt, i
     const u_char b = msg_subtract ? 0xff - disp.b : disp.b;
     if (prompt.symbol != REIPAN_PROMPT_TEXT)
     {
-        const float scale = advance < cell.w ? (float)advance / cell.w : 1.0f;
+        const float scale_w = advance / cell.w;
+        const float scale_h = height / cell.h;
+        const float scale = scale_w < scale_h ? scale_w : scale_h;
         const float x = disp.pos_x + (advance - cell.w * scale) * 0.5f;
-        const float y = disp.pos_y + cell.h * (1.0f - scale) * 0.5f;
+        const float y = disp.pos_y + (height - cell.h * scale) * 0.5f;
         const u_char glyph = 0x49 + prompt.symbol - REIPAN_PROMPT_CIRCLE;
         DrawFontCell(cell, glyph, z, x, y, scale, cell.w, r, g, b, disp.alpha);
         return;
@@ -371,10 +374,11 @@ static void DrawMessagePrompt(const DISP_STR &disp, ReiPan_InputPrompt prompt, i
         return;
 
     // Keep the original button's advance, including in fixed-position guides.
-    const float fit = (float)(advance - 2) / width;
-    const float scale = fit < 0.9f ? fit : 0.9f;
+    const float fit = (advance - 2) / width;
+    const float max_scale = 0.9f * height / cell.h;
+    const float scale = fit < max_scale ? fit : max_scale;
     float x = disp.pos_x + (advance - width * scale) * 0.5f;
-    const float y = disp.pos_y + cell.h * (1.0f - scale) * 0.5f;
+    const float y = disp.pos_y + (height - cell.h * scale) * 0.5f;
     for (const char *p = prompt.text; *p; ++p)
     {
         const u_char glyph = PromptGlyph(*p);
@@ -383,6 +387,27 @@ static void DrawMessagePrompt(const DISP_STR &disp, ReiPan_InputPrompt prompt, i
             DrawFontCell(cell, glyph, z, x, y, scale, glyph_w, r, g, b, disp.alpha);
         x += glyph_w * scale;
     }
+}
+
+void MsgDrawButtonPrompt(int button, int x, int y, int width, int height, int alpha)
+{
+    if (!use_chs_font_widths || width <= 2 || height <= 0 || alpha <= 0)
+        return;
+
+    DISP_STR disp = {};
+    disp.pos_x = x;
+    disp.pos_y = y;
+    disp.r = disp.g = disp.b = 0x98;
+    disp.alpha = alpha;
+    disp.pri = 0x20;
+
+    const int saved_bank = font_bank_host;
+    const u_long saved_tex0 = font_tex0_host;
+    font_bank_host = 0;
+    font_tex0_host = fntdat[0].tex0;
+    DrawMessagePrompt(disp, ReiPan_InputGetButtonPrompt(button), width, height);
+    font_bank_host = saved_bank;
+    font_tex0_host = saved_tex0;
 }
 #endif
 

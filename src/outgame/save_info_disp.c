@@ -79,7 +79,13 @@ void SaveInfoDrawThumb(void *tim2, int x, int y, u_char alpha, int pri)
 // FF3 0x00134298.
 void SaveInfoPrintCardSlot(int port, int cx, int y, int w, int alpha, int pri)
 {
+#ifdef REIPAN_SLPS_25544_CHS
+    // SLPS_255.44 message 0x59/9 without the slot number.
+    static u_char slot_label[] = {0x8d, 0xf0, 0xb5, 0xf3, 0x4a, 0xf3, 0x4b, 0x7d, 0xf2, 0x30, MSG_CODE_END};
+    u_char *str = slot_label;
+#else
     u_char *str = GetMsgDataAddr(MSG_SAVE, 8);
+#endif
     int     width = MsgGetLineWidth(str, nullptr);
     int     x = cx - (width + 0x18) / 2;
 
@@ -160,13 +166,7 @@ void SaveInfoPrintInfo1D(int n, int x, int y, int alpha, int pri, int flag)
 // FF3 0x001348f8.
 void AlbumInfoPrintCardSlot(int port, int cx, int y, int w, int alpha, int pri)
 {
-    u_char *str = GetMsgDataAddr(MSG_SAVE, 8);
-    int     width = MsgGetLineWidth(str, nullptr);
-    int     x = cx - (width + 0x18) / 2;
-
-    (void)w;
-    PrintMsg_ArrangeOneLine(str, x, y, SAVE_INFO_COL, alpha, pri, 0, 0, 0);
-    PrintNumber_N(port + 1, 1, x + width + 0xc, y, SAVE_INFO_COL, (u_char)alpha, pri, 1, 1);
+    SaveInfoPrintCardSlot(port, cx, y, w, alpha, pri);
 }
 
 // Album message 0x26, no + 1, message 0x27, then message `kind` (0x2c for

@@ -305,6 +305,7 @@ static void SizumeMouseStone(void)
     ReiPan_MenuBox box;
 
     ReiPan_MenuMouseBegin(0, nullptr);
+    MenuMouseGuide(handle, "R cap_2", guide, 3);
     MenuMouseGuide(handle, "R cap_3", guide, 3);
     if (ReiPan_MenuMouseNameBox(handle, "R arw_L", &box))
         ReiPan_MenuMouseButton(box.x, box.y, box.w, box.h, REIPAN_MENU_LEFT);
