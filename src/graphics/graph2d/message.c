@@ -16,6 +16,9 @@
 #include <stdio.h>                      // sprintf
 #include <string.h>                     // memset
 #include <libgraph.h>                   // SCE_GS_* register addresses
+#include <SDL3/SDL_log.h>
+#include <set>
+#include <utility>
 
 #include "graphics/graph2d/font.h"      // FontTexSendVram
 #include "graphics/graph2d/g2d_draw.h"  // StartDmaDirectTrans, EndDmaDirectTrans
@@ -24,6 +27,9 @@
 #include "reipan/reipan_memory.h"       // PC: ReiPan_GetHostPointer
 #include "reipan/rendering/reipan_renderer.h"   // PC: the glyph quad
 #include "system/eeiop/cd_file_dat.h"   // MSG_OBJ
+#include "system/eeiop/cddat.h"
+#include "reipan/io/reipan_file.h"
+#include "reipan/io/reipan_paths.h"
 #include "system/mc/prg/mc_check_card.h"    // GetAccessMemoryCardPort
 #include "system/os/eecdvd.h"           // LoadReq
 #include "system/os/system.h"           // GetSysWrk, SYS_WRK::GetLanguage
@@ -43,6 +49,11 @@ struct MSG_PAGE_CTRL                /* 0xc on the EE */
 static_assert(offsetof(MSG_PAGE_CTRL, page) == sizeof(u_char *), "MSG_PAGE_CTRL.page (EE 0x04)");
 
 static MSG_PAGE_CTRL msg_page;      /* data 0x32d688 */
+static unsigned int msg_data_size;
+#ifdef REIPAN_SLPS_25544_CHS
+static u_char chs_font_widths[FNTDAT_BANK_NUM][FONT_W_NUM];
+static bool use_chs_font_widths;
+#endif
 
 static u_char msg_cur_col[3];       /* sdata 0x373650 (gp+0x160): SetCurColorRGB's r, g, b */
 static u_char msg_subtract;         /* sdata 0x373653 (gp+0x163): MsgSetSubtractMode */
@@ -347,7 +358,7 @@ int MsgSetArrange(DISP_STR *disp, int arrange)
 
 void MsgColChange(DISP_STR *disp, u_char col_label)
 {
-    if (col_label == MSG_COL_CURRENT)
+    if (col_label == MSG_COL_CURRENT || col_label >= MSG_COL_NUM)
     {
         MsgSetColorRGB(disp, msg_cur_col[0], msg_cur_col[1], msg_cur_col[2]);
         return;
@@ -928,8 +939,8 @@ static int GetAccessMcSlot_Msg(void)
 // Pages
 // ──────────────────────────────────────────────────────────────────────
 
-// Page breaks (0xfb) in message (type, id). FF3 0x0020dac0 (0xfc counts as
-// three bytes here, two when printed).
+// Page breaks (0xfb) in message (type, id). Use the same control lengths
+// as the printer, including 0xfc followed by one number selector.
 
 int MsgGetPageBreakNum(int msg_type, int msg_id)
 {
@@ -953,16 +964,16 @@ int MsgGetPageBreakNum(int msg_type, int msg_id)
         case 0xf6:
         case 0xf7:
         case 0xf8:
-        case MSG_CODE_ARRANGE:
+        case MSG_CODE_EXNUM:
         case MSG_CODE_COL:
             p = p + 2;
+            break;
+        case MSG_CODE_ARRANGE:
+            p = p + 3;
             break;
         case MSG_CODE_PAGE:
             p = p + 1;
             num = num + 1;
-            break;
-        case MSG_CODE_EXNUM:
-            p = p + 3;
             break;
         case MSG_CODE_END:
             p = p + 1;
@@ -1081,6 +1092,8 @@ int MsgGetLineWidth(u_char *str, u_char **next)
             str = str + 1;
             break;
         case MSG_CODE_ARRANGE:
+            str = str + 3;
+            break;
         case MSG_CODE_COL:
             str = str + 2;
             break;
@@ -1134,6 +1147,12 @@ int MsgGetLineWidth(u_char *str, u_char **next)
 
 u_char GetFontSize(u_char bank, u_char fn)
 {
+    if (bank >= FNTDAT_BANK_NUM || fn >= FONT_W_NUM)
+        return 24;
+#ifdef REIPAN_SLPS_25544_CHS
+    if (use_chs_font_widths)
+        return chs_font_widths[bank][fn];
+#endif
     return (u_char)font_w_tbl[bank][fn];
 }
 
@@ -1141,13 +1160,80 @@ u_char GetFontSize(u_char bank, u_char fn)
 // offsets from the data start. FF3 0x0020de38; FF2 GetMsgDataAddr (asserts
 // dropped, data at 0xfed000 instead of 0xd9ec00).
 
+static u_char *FindMessage(u_char *top, unsigned int size, int type, int id)
+{
+    if (top == nullptr || size < 8 || type < 0 || id < 0)
+        return nullptr;
+
+    const auto read_offset = [top](unsigned int at) {
+        unsigned int offset;
+        memcpy(&offset, top + at, sizeof(offset));
+        return offset;
+    };
+    const unsigned int table_size = read_offset(0);
+    if (table_size < 4 || table_size > size - 4 || table_size % 4 != 0 ||
+        (unsigned int)type >= table_size / 4)
+        return nullptr;
+
+    const unsigned int group = read_offset((unsigned int)type * 4);
+    if (group < table_size || group > size - 4)
+        return nullptr;
+
+    // Group IDs can alias the same table (the Chinese card groups 0x82/0x83).
+    unsigned int group_end = size;
+    for (unsigned int at = 0; at < table_size; at += 4)
+    {
+        const unsigned int offset = read_offset(at);
+        if (offset > group && offset < group_end)
+            group_end = offset;
+    }
+
+    const unsigned int first = read_offset(group);
+    if (first <= group || first >= group_end || (first - group) % 4 != 0 ||
+        (unsigned int)id >= (first - group) / 4)
+        return nullptr;
+
+    const unsigned int entry = group + (unsigned int)id * 4;
+    const unsigned int start = read_offset(entry);
+    unsigned int end = group_end;
+    for (unsigned int at = entry + 4; at < first; at += 4)
+    {
+        const unsigned int offset = read_offset(at);
+        if (offset == start)
+            continue;
+        if (offset < start || offset > group_end)
+            return nullptr;
+        end = offset;
+        break;
+    }
+    if (start < first || start >= end)
+        return nullptr;
+
+    for (unsigned int at = start; at < end; )
+    {
+        const u_char code = top[at++];
+        if (code == MSG_CODE_END)
+            return top + start;
+        if (code == MSG_CODE_ARRANGE)
+            at += 2;
+        else if ((code >= MSG_CODE_BANK1 && code <= MSG_CODE_BANK9) ||
+                 code == MSG_CODE_EXNUM || code == MSG_CODE_COL)
+            at++;
+    }
+    return nullptr;
+}
+
 u_char *GetMsgDataAddr(int msg_type, int msg_id)
 {
     u_char *top = (u_char *)ReiPan_GetHostPointer(MSG_DATA_ADRS);
-    u_char *addr;
+    if (u_char *message = FindMessage(top, msg_data_size, msg_type, msg_id))
+        return message;
 
-    addr = EvBinChangeAddr4(top, top + msg_type * 4);
-    return EvBinChangeAddr4(top, addr + msg_id * 4);
+    static u_char blank[] = {0xff, 0, 0, 0};
+    static std::set<std::pair<int, int>> reported;
+    if (reported.size() < 256 && reported.emplace(msg_type, msg_id).second)
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "ReiPan: message unavailable (group 0x%x, index 0x%x)", msg_type, msg_id);
+    return blank;
 }
 
 // FF3 0x0020dea8.
@@ -1170,5 +1256,31 @@ void SetCurColorRGB(u_char r, u_char g, u_char b)
 
 void LangDataLoadReq(void)
 {
-    LoadReq(MSG_OBJ + GetSysWrk()->GetLanguage(), ReiPan_GetHostPointer(MSG_DATA_ADRS));
+    const int file = MSG_OBJ + GetSysWrk()->GetLanguage();
+    const unsigned int size = GetFileSize(file);
+    msg_data_size = size <= FONT_TEX_ADRS - MSG_DATA_ADRS ? size : 0;
+    if (msg_data_size == 0)
+    {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ReiPan: invalid message archive size %u", size);
+        return;
+    }
+#ifdef REIPAN_SLPS_25544_CHS
+    if (!use_chs_font_widths)
+    {
+        char path[1024];
+        if (ReiPan_PathResolveData("font_widths.bin", path, sizeof(path)) &&
+            ReiPan_FileSize(path) == sizeof(chs_font_widths) &&
+            ReiPan_FileReadAt(path, 0, chs_font_widths, sizeof(chs_font_widths)))
+        {
+            use_chs_font_widths = true;
+            for (const auto &bank : chs_font_widths)
+                for (u_char width : bank)
+                    if (width > 24)
+                        use_chs_font_widths = false;
+        }
+        if (!use_chs_font_widths)
+            SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "ReiPan: Chinese font widths unavailable");
+    }
+#endif
+    LoadReq(file, ReiPan_GetHostPointer(MSG_DATA_ADRS));
 }

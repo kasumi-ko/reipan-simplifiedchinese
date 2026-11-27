@@ -11,6 +11,7 @@
 namespace Rml
 {
 class Context;
+class ElementDocument;
 }
 
 /*
@@ -78,6 +79,7 @@ const char *PadTriggersName();
 bool PointerActive();
 
 Rml::Context *GetContext();
+Rml::ElementDocument *LoadDocument(Rml::Context *context, const char *path);
 
 /* The window the UI draws into, to parent the system's own dialogs on. */
 SDL_Window *GetWindow();

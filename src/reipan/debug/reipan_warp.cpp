@@ -41,10 +41,16 @@
  *  sizes match; the head records them and the load checks them in play.
  * ======================================================================== */
 #include "reipan/debug/reipan_warp.h"
+#include "../reipan_ui/reipan_ui_locale.h"
 
 #include "graphics/graph2d/fade.h"            // fade_ctrl (the diagnostic line)
 #include "ingame/cat/cat_ctrl.h"                // CatGetWrk, CatSetActive, CatMdlCreate, ...
 #include "ingame/enemy/random_ghost.h"          // RandGhostAreaChange
+#include "graphics/movie/movie.h"
+#include "graphics/scene/scene.h"
+#include "ingame/movie_room_menu/prg/movie_projecter.h"
+#include "system/eeiop/cddat.h"
+#include "system/playpss/playpss.h"
 #include "ingame/event/prg/ev_change.h"         // GetEvState, SetEventState, GetEvExeCount, EV_EVENT_NUM
 #include "ingame/event/prg/ev_exe.h"            // SetEventInitStatus
 #include "ingame/event/prg/ev_command.h"        // EvGameClear (clear=)
@@ -58,10 +64,12 @@
 #include "ingame/menu/start_menu.h"              // GetFinderStateWrk, FinderStateHasAny (game cleared)
 #include "ingame/item/prg/item.h"               // ItemSetNum
 #include "ingame/memo/memo.h"                   // MemoSetStatus
+#include "ingame/menu/menu_cassette.h"           // CassetteMenuReq
 #include "ingame/map/MapCtrl.h"                 // MapAreaGetHeight
 #include "ingame/map/map_rectangle.h"           // MrecSetCameraSet
 #include "ingame/map/MapLoad.h"                 // MapLoadGetOffset, MapLoadGetBuffID, MapLoadSetDrawFlg
 #include "ingame/map/MapRcb.h"                  // RcbGetFloor
+#include "ingame/map/MapRoomFile.h"             // RoomFileGetObjPack
 #include "ingame/map/RegDat.h"                  // RegDatGetTopAddr, RegDatVecFind4Label, RegDatGetVecPtr
 #include "ingame/photo/photo_obj.h"             // PhotoObjAreaOn / Off
 #include "ingame/plyr/player.h"                 // PLYR_WRK, PlyrSetCurrent, PlyrSetPos / Rot, SetPlyrAnime
@@ -69,6 +77,7 @@
 #include "ingame/puzzle/puzzle.h"               // PuzzleSet
 #include "ingame/sound/snd_ctrl.h"              // SndAllBufStop, SndSeBankRelease
 #include "ingame/story_door.h"                  // MapAreaNoGet, MapAreaSideGet, MapAreaGetSaveData
+#include "ingame/story_save.h"                  // StorySaveGameReq
 #include "main/gphase.h"                        // GetGPhaseCtrl, GPHASE_NODE, GPHASE_STATE_*
 #include "outgame/option.h"                     // OptionApplySound
 #include "outgame/title_menu.h"                 // TitleMenuDecide, TitleMenuFlagSet
@@ -96,6 +105,8 @@
 
 namespace
 {
+using ReiPanUiLocale::UiText;
+
 
 // ──────────────────────────────────────────────────────────────────────
 // Phases and places
@@ -111,6 +122,7 @@ enum
     PHASE_STORY_NOWLOADING = 30,
     PHASE_TITLE_NEWGAME    = 51,
     PHASE_STORY_NORMAL     = 32,
+    PHASE_STORY_SAVE       = 41,
 };
 
 constexpr int kAreaMax    = 59;     // area_data.ecb rows 1..59
@@ -235,6 +247,7 @@ struct WarpParams
     int then_item    = -1;      // after a warp: give this item first (a puzzle's key item)
     int then_fill    = 0;       // after a warp: three of every item, every memo found (testing the menus)
     int then_phase   = -1;      // after a warp: request this game phase after 6 s of play (testing the menus)
+    int phase_wait   = 150;
     int then_clear   = -1;      // after a warp: run GAME_CLEAR_ with this ending (0 / 1) after 6 s of play
     int then_sky     = 0;       // after a warp: the map-sky effect (the sky dome) after 6 s of play: 1 at Rei, 2 on the camera
 };
@@ -296,11 +309,12 @@ struct Teleport
     int        stage  = 0;          // 0 wait, 1 request the room, 2 wait for it, 3 place
     int        wait   = 0;          // play frames before it starts
     WarpParams p;                   // area, spawn
+    bool       placed = false;
 };
 
 Job                                g_job;
 Teleport                           g_tp;
-std::string                        g_status = "Idle.";
+std::string                        g_status = UiText("Idle.");
 std::vector<std::function<void()>> g_commands;  // window buttons, run at the next frame start
 bool                               g_save_request;
 int                                g_save_after;  // > 0: play frames before a scripted snapshot
@@ -582,7 +596,7 @@ void RequestWarp(const WarpParams &p)
     g_job.warp  = p;
     char what[96];
     std::snprintf(what, sizeof(what), "warp to area %d (%s, %s), chapter %d", p.area,
-                  p.world ? "real world" : "dream", p.side ? "night" : "day", p.chapter);
+                  p.world ? UiText("real world") : "dream", p.side ? "night" : "day", p.chapter);
     g_job.what = what;
     SetStatus("Requested " + g_job.what + ".");
 }
@@ -652,7 +666,7 @@ void RequestMove(const WarpParams &p)
     }
     g_job.extra.mdl_kind = (u_char)(p.world ? p.side : 2);
     g_job.extra.mdl_mot  = (u_char)(p.world ? 0 : 1);
-    g_job.what = "move to area " + std::to_string(p.area) + (p.world ? " (real world)" : " (dream)");
+    g_job.what = "move to area " + std::to_string(p.area) + (p.world ? UiText(" (real world)") : UiText(" (dream)"));
     SetStatus("Requested " + g_job.what + ".");
 }
 
@@ -1120,7 +1134,7 @@ void RunJob()
             }
             if (g_job.warp.then_phase >= 0)
             {
-                g_phase_after = 150;
+                g_phase_after = g_job.warp.phase_wait;
                 g_phase_id    = g_job.warp.then_phase;
             }
             if (g_job.warp.then_puzzle >= 0)
@@ -1229,7 +1243,8 @@ void RunTeleport()
 
     case 3:
         g_tp.active = false;
-        if (PlacePlayer(p))
+        g_tp.placed = PlacePlayer(p);
+        if (g_tp.placed)
         {
             SetStatus("Teleported to area " + std::to_string(MapAreaNoGet()) + ".");
         }
@@ -1289,6 +1304,7 @@ void ReadEnvironment()
                 else if (key == "item")    p.then_item = v;
                 else if (key == "fill")    p.then_fill = v;
                 else if (key == "phase")   p.then_phase = v;
+                else if (key == "phase_wait") p.phase_wait = std::max(1, v);
                 else if (key == "clear")   p.then_clear = v;
                 else if (key == "sky")     p.then_sky = v;
                 else if (key == "cleared") g_cleared = std::clamp(v, 0, 3);
@@ -1352,21 +1368,21 @@ void DrawGameLine()
 {
     const GPHASE_NODE *leaf = Leaf();
 
-    ImGui::Text("Phase %d%s", leaf != nullptr ? leaf->id : -1, InPlay() ? " (play)" : "");
+    ImGui::Text(UiText("Phase %d%s"), leaf != nullptr ? leaf->id : -1, InPlay() ? UiText(" (play)") : "");
     if (StackHas(PHASE_STORY_MAIN) && ingame_wrk.plyr_wrk != nullptr)
     {
         const float *pos = ingame_wrk.plyr_wrk->pos;
 
         ImGui::SameLine();
-        ImGui::Text("| area %d side %d | %s | chapter %d (title %d) | player %d",
+        ImGui::Text(UiText("| area %d side %d | %s | chapter %d (title %d) | player %d"),
                     MapAreaNoGet(), MapAreaSideGet(), ingame_wrk.b03 == 1 ? "real" : "dream",
                     ingame_wrk.b01, (s_char)ingame_wrk.b02, PlyrGetCurNo());
-        ImGui::Text("Rei at (%.1f, %.1f, %.1f)", pos[0], pos[1], pos[2]);
+        ImGui::Text(UiText("Rei at (%.1f, %.1f, %.1f)"), pos[0], pos[1], pos[2]);
         float *org = MapLoadGetOffset(MapLoadGetBuffID(MapAreaNoGet()));
         if (org != nullptr)
         {
             ImGui::SameLine();
-            ImGui::TextDisabled("room x/z %.0f, %.0f", pos[0] - org[0], pos[2] - org[2]);
+            ImGui::TextDisabled(UiText("room x/z %.0f, %.0f"), pos[0] - org[0], pos[2] - org[2]);
         }
     }
 }
@@ -1441,12 +1457,12 @@ void DrawSpawn(WarpParams &p, bool allow_game)
 {
     if (allow_game)
     {
-        ImGui::RadioButton("Where the game puts her", &p.spawn, SPAWN_GAME);
+        ImGui::RadioButton(UiText("Where the game puts her"), &p.spawn, SPAWN_GAME);
         ImGui::SameLine();
     }
-    ImGui::RadioButton("Room x / z", &p.spawn, SPAWN_ROOM);
+    ImGui::RadioButton(UiText("Room x / z"), &p.spawn, SPAWN_ROOM);
     ImGui::SameLine();
-    ImGui::RadioButton("Beside a cat label", &p.spawn, SPAWN_CAT_LABEL);
+    ImGui::RadioButton(UiText("Beside a cat label"), &p.spawn, SPAWN_CAT_LABEL);
     if (p.spawn == SPAWN_ROOM)
     {
         ImGui::DragInt("x", &p.room_x, 1.0f, -2000, 2000);
@@ -1456,25 +1472,25 @@ void DrawSpawn(WarpParams &p, bool allow_game)
     else if (p.spawn == SPAWN_CAT_LABEL)
     {
         ImGui::SetNextItemWidth(160);
-        if (ImGui::SliderInt("Cat label", &p.cat_label, 0, CAT_LABEL_NUM - 1))
+        if (ImGui::SliderInt(UiText("Cat label"), &p.cat_label, 0, CAT_LABEL_NUM - 1))
         {
             p.area  = kCatLabel[p.cat_label].area;
             p.world = 1;
         }
         ImGui::SameLine();
-        ImGui::TextDisabled("area %d", kCatLabel[p.cat_label].area);
+        ImGui::TextDisabled(UiText("area %d"), kCatLabel[p.cat_label].area);
     }
 }
 
 void DrawWarp()
 {
-    if (!ImGui::CollapsingHeader("Warp: a new game from a chapter", ImGuiTreeNodeFlags_DefaultOpen))
+    if (!ImGui::CollapsingHeader(UiText("Warp: a new game from a chapter"), ImGuiTreeNodeFlags_DefaultOpen))
     {
         return;
     }
 
     ImGui::SetNextItemWidth(200);
-    if (ImGui::SliderInt("Chapter", &g_ui.chapter, 0, kChapterMax))
+    if (ImGui::SliderInt(UiText("Chapter"), &g_ui.chapter, 0, kChapterMax))
     {
         WarpParams p   = ChapterParams(g_ui.chapter);
         p.player       = g_ui.player;
@@ -1490,30 +1506,30 @@ void DrawWarp()
                           "it moves the world, the area and Rei as the story would.");
     }
     const ChapterStart &cs = kChapterStart[std::clamp(g_ui.chapter, 0, kChapterMax)];
-    ImGui::TextDisabled("start event %d: %s", cs.entry, cs.where);
+    ImGui::TextDisabled(UiText("start event %d: %s"), cs.entry, cs.where);
 
-    if (ImGui::TreeNode("Load first into (the start event may move her on)"))
+    if (ImGui::TreeNode(UiText("Load first into (the start event may move her on)")))
     {
-        DrawAreaCombo("Area", &g_ui.area, &g_ui.world);
-        ImGui::RadioButton("Dream (manor)", &g_ui.world, 0);
+        DrawAreaCombo(UiText("Area"), &g_ui.area, &g_ui.world);
+        ImGui::RadioButton(UiText("Dream (manor)"), &g_ui.world, 0);
         ImGui::SameLine();
-        ImGui::RadioButton("Real world (house)", &g_ui.world, 1);
-        ImGui::RadioButton("Day", &g_ui.side, 0);
+        ImGui::RadioButton(UiText("Real world (house)"), &g_ui.world, 1);
+        ImGui::RadioButton(UiText("Day"), &g_ui.side, 0);
         ImGui::SameLine();
-        ImGui::RadioButton("Night", &g_ui.side, 1);
+        ImGui::RadioButton(UiText("Night"), &g_ui.side, 1);
         ImGui::SameLine();
-        ImGui::TextDisabled("(map side)");
-        ImGui::RadioButton("Rei", &g_ui.player, 0);
+        ImGui::TextDisabled(UiText("(map side)"));
+        ImGui::RadioButton(UiText("Rei"), &g_ui.player, 0);
         ImGui::SameLine();
-        ImGui::RadioButton("Miku", &g_ui.player, 1);
+        ImGui::RadioButton(UiText("Miku"), &g_ui.player, 1);
         ImGui::SameLine();
-        ImGui::RadioButton("Kei", &g_ui.player, 2);
+        ImGui::RadioButton(UiText("Kei"), &g_ui.player, 2);
         DrawSpawn(g_ui, true);
         ImGui::TreePop();
     }
 
     bool then_cat = g_ui.then_label >= 0;
-    if (ImGui::Checkbox("Then teleport beside the cat's label", &then_cat))
+    if (ImGui::Checkbox(UiText("Then teleport beside the cat's label"), &then_cat))
     {
         g_ui.then_label = then_cat ? 0 : -1;
     }
@@ -1526,7 +1542,7 @@ void DrawWarp()
 
     bool db   = g_ui.debug_events != 0;
     bool stop = g_ui.stop_events != 0;
-    if (ImGui::Checkbox("FF3's debug event file", &db))
+    if (ImGui::Checkbox(UiText("FF3's debug event file"), &db))
     {
         g_ui.debug_events = db;
     }
@@ -1537,7 +1553,7 @@ void DrawWarp()
                           "unlocked, random ghosts on). Everything else is the same file.");
     }
     ImGui::SameLine();
-    if (ImGui::Checkbox("Stop events", &stop))
+    if (ImGui::Checkbox(UiText("Stop events"), &stop))
     {
         g_ui.stop_events = stop;
     }
@@ -1548,12 +1564,12 @@ void DrawWarp()
                           "below, since event 5 does it). Use Events below to run one.");
     }
 
-    if (ImGui::Button(g_job.kind == JOB_WARP ? "Warping..." : "Start here"))
+    if (ImGui::Button(g_job.kind == JOB_WARP ? UiText("Warping...") : UiText("Start here")))
     {
         RequestWarp(g_ui);
     }
     ImGui::SameLine();
-    ImGui::TextDisabled("(through the title, as New Game; a running game is left first)");
+    ImGui::TextDisabled(UiText("(through the title, as New Game; a running game is left first)"));
 }
 
 void DrawTeleport()
@@ -1566,14 +1582,14 @@ void DrawTeleport()
         return p;
     }();
 
-    if (!ImGui::CollapsingHeader("Teleport (in play)", ImGuiTreeNodeFlags_DefaultOpen))
+    if (!ImGui::CollapsingHeader(UiText("Teleport (in play)"), ImGuiTreeNodeFlags_DefaultOpen))
     {
         return;
     }
-    DrawAreaCombo("To area", &tp.area, nullptr);
+    DrawAreaCombo(UiText("To area"), &tp.area, nullptr);
     DrawSpawn(tp, false);
     ImGui::BeginDisabled(!InPlay() || g_tp.active);
-    if (ImGui::Button("Teleport"))
+    if (ImGui::Button(UiText("Teleport")))
     {
         WarpParams p = tp;
         if (p.spawn == SPAWN_CAT_LABEL)
@@ -1584,12 +1600,12 @@ void DrawTeleport()
     }
     ImGui::EndDisabled();
     ImGui::SameLine();
-    ImGui::TextDisabled("(the room loads as AREA_CHANGE; events keep running)");
+    ImGui::TextDisabled(UiText("(the room loads as AREA_CHANGE; events keep running)"));
 }
 
 void DrawSnapshots()
 {
-    if (!ImGui::CollapsingHeader("Snapshots", ImGuiTreeNodeFlags_DefaultOpen))
+    if (!ImGui::CollapsingHeader(UiText("Snapshots"), ImGuiTreeNodeFlags_DefaultOpen))
     {
         return;
     }
@@ -1599,22 +1615,22 @@ void DrawSnapshots()
     }
 
     ImGui::BeginDisabled(!InPlay());
-    if (ImGui::Button("Save snapshot now"))
+    if (ImGui::Button(UiText("Save snapshot now")))
     {
         g_save_request = true;
     }
     ImGui::EndDisabled();
     ImGui::SameLine();
-    if (ImGui::Button("Refresh"))
+    if (ImGui::Button(UiText("Refresh")))
     {
         g_list_dirty = true;
     }
     ImGui::SameLine();
-    ImGui::TextDisabled("(user folder/%s)", kSnapDir);
+    ImGui::TextDisabled(UiText("(user folder/%s)"), kSnapDir);
 
     if (g_snaps.empty())
     {
-        ImGui::TextDisabled("No snapshots yet.");
+        ImGui::TextDisabled(UiText("No snapshots yet."));
         return;
     }
     if (!ImGui::BeginTable("snaps", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp))
@@ -1633,10 +1649,10 @@ void DrawSnapshots()
         ImGui::TableNextColumn();
         std::snprintf(info, sizeof(info), "area %d %s, chapter %d, %02d:%02d:%02d", e.head.area,
                       e.head.world == 1 ? "real" : "dream", e.head.chapter, e.head.hour, e.head.min, e.head.sec);
-        ImGui::TextUnformatted(e.ok ? info : "another build's layout");
+        ImGui::TextUnformatted(e.ok ? info : UiText("another build's layout"));
         ImGui::TableNextColumn();
         ImGui::BeginDisabled(!e.ok || g_job.kind != JOB_NONE);
-        if (ImGui::SmallButton("Load"))
+        if (ImGui::SmallButton(UiText("Load")))
         {
             SnapEntry copy = e;
             Command([copy]() { RequestLoad(copy); });
@@ -1645,7 +1661,7 @@ void DrawSnapshots()
         ImGui::TableNextColumn();
         {
             bool armed = g_delete_armed == e.path;
-            if (ImGui::SmallButton(armed ? "Sure?" : "Delete"))
+            if (ImGui::SmallButton(armed ? UiText("Sure?") : UiText("Delete")))
             {
                 if (armed)
                 {
@@ -1667,23 +1683,23 @@ void DrawSnapshots()
 
 void DrawEvents()
 {
-    if (!ImGui::CollapsingHeader("Events"))
+    if (!ImGui::CollapsingHeader(UiText("Events")))
     {
         return;
     }
     ImGui::SetNextItemWidth(120);
-    ImGui::DragInt("Event", &g_event_id, 1.0f, 0, EV_EVENT_NUM - 1);
+    ImGui::DragInt(UiText("Event"), &g_event_id, 1.0f, 0, EV_EVENT_NUM - 1);
     g_event_id = std::clamp(g_event_id, 0, EV_EVENT_NUM - 1);
     if (!StackHas(PHASE_STORY_MAIN))
     {
-        ImGui::TextDisabled("(in game only)");
+        ImGui::TextDisabled(UiText("(in game only)"));
         return;
     }
     int state = GetEvState(g_event_id);
     ImGui::SameLine();
     ImGui::Text("%s, ran %d time(s)", EventStateName(state), GetEvExeCount(g_event_id));
     ImGui::BeginDisabled(!InPlay());
-    if (ImGui::Button("Open (post its conditions)"))
+    if (ImGui::Button(UiText("Open (post its conditions)")))
     {
         int id = g_event_id;
         Command([id]() {
@@ -1692,13 +1708,13 @@ void DrawEvents()
         });
     }
     ImGui::SameLine();
-    if (ImGui::Button("Start now"))
+    if (ImGui::Button(UiText("Start now")))
     {
         int id = g_event_id;
         Command([id]() { SetEventInitStatus(id); });
     }
     ImGui::SameLine();
-    if (ImGui::Button("Mark ended"))
+    if (ImGui::Button(UiText("Mark ended")))
     {
         int id = g_event_id;
         Command([id]() { SetEventState(id, EV_STATE_END); });
@@ -1709,7 +1725,7 @@ void DrawEvents()
         // EventSetStop has no getter; the window keeps the last value it set.
         static bool stop_ui;
         stopped = stop_ui;
-        if (ImGui::Checkbox("Stop events now", &stopped))
+        if (ImGui::Checkbox(UiText("Stop events now"), &stopped))
         {
             stop_ui = stopped;
             int on  = stopped;
@@ -1720,32 +1736,32 @@ void DrawEvents()
 
 void DrawGameClear()
 {
-    if (!ImGui::CollapsingHeader("Game clear", ImGuiTreeNodeFlags_DefaultOpen))
+    if (!ImGui::CollapsingHeader(UiText("Game clear"), ImGuiTreeNodeFlags_DefaultOpen))
     {
         return;
     }
-    static const char *const kDifficulty[] = {"Easy", "Normal", "Hard", "Nightmare"};
+    static const char *const kDifficulty[] = {UiText("Easy"), UiText("Normal"), UiText("Hard"), UiText("Nightmare")};
     static int               difficulty    = 1;
     static int               ending        = 0;
     bool                     cleared       = g_cleared >= 0;
 
-    if (ImGui::Checkbox("Treat the game as cleared", &cleared))
+    if (ImGui::Checkbox(UiText("Treat the game as cleared"), &cleared))
     {
         g_cleared = cleared ? difficulty : -1;
     }
     ImGui::SameLine();
     ImGui::SetNextItemWidth(120);
-    if (ImGui::Combo("cleared on", &difficulty, kDifficulty, IM_ARRAYSIZE(kDifficulty)) && g_cleared >= 0)
+    if (ImGui::Combo(UiText("cleared on"), &difficulty, kDifficulty, IM_ARRAYSIZE(kDifficulty)) && g_cleared >= 0)
     {
         g_cleared = difficulty;
     }
     ImGui::TextDisabled("New Game then opens the start menu (extra mode, missions, gallery, costumes);\n"
                         "Hard (and Nightmare after a Hard clear) on the difficulty select. Kept until unticked.");
     ImGui::SetNextItemWidth(120);
-    ImGui::Combo("ending", &ending, "first\0other\0");
+    ImGui::Combo(UiText("ending"), &ending, "first\0other\0");
     ImGui::SameLine();
     ImGui::BeginDisabled(!InPlay());
-    if (ImGui::Button("Play the game clear now"))
+    if (ImGui::Button(UiText("Play the game clear now")))
     {
         int e = ending;
         Command([e]() {
@@ -1760,13 +1776,13 @@ void DrawGameClear()
 
 void DrawCat()
 {
-    if (!ImGui::CollapsingHeader("Cat", ImGuiTreeNodeFlags_DefaultOpen))
+    if (!ImGui::CollapsingHeader(UiText("Cat"), ImGuiTreeNodeFlags_DefaultOpen))
     {
         return;
     }
     if (!StackHas(PHASE_STORY_MAIN))
     {
-        ImGui::TextDisabled("(in game only)");
+        ImGui::TextDisabled(UiText("(in game only)"));
         return;
     }
     const CAT_WRK *c = CatGetWrk(0);
@@ -1785,23 +1801,23 @@ void DrawCat()
                 c->lock[1] != 0, c->lock[2] != 0, c->lock[3] != 0, c->lock[4] != 0, c->lock[5] != 0);
 
     ImGui::BeginDisabled(!InPlay());
-    if (ImGui::Button(c->active ? "Deactivate" : "Activate"))
+    if (ImGui::Button(c->active ? UiText("Deactivate") : UiText("Activate")))
     {
         int on = c->active == 0;
         Command([on]() { CatSetActive(0, on); });
     }
     ImGui::SameLine();
-    if (ImGui::Button("Create model"))
+    if (ImGui::Button(UiText("Create model")))
     {
         Command([]() { CatMdlCreate(0, -1, 1); });
     }
     ImGui::SameLine();
-    if (ImGui::Button("Restart acts"))
+    if (ImGui::Button(UiText("Restart acts")))
     {
         Command([]() { CatActRestart(0); });
     }
     ImGui::SameLine();
-    if (ImGui::Button("Bring to Rei"))
+    if (ImGui::Button(UiText("Bring to Rei")))
     {
         Command([]() {
             PLYR_WRK     *plyr = ingame_wrk.plyr_wrk;
@@ -1816,7 +1832,7 @@ void DrawCat()
     ImGui::SetNextItemWidth(120);
     ImGui::SliderInt("##label", &g_cat_label, 0, CAT_LABEL_NUM - 1);
     ImGui::SameLine();
-    if (ImGui::Button("Put at label"))
+    if (ImGui::Button(UiText("Put at label")))
     {
         int label = g_cat_label;
         Command([label]() { CatSetPosLabel(0, (s_char)label); });
@@ -1843,7 +1859,7 @@ void MarkCleared()
 
     wrk->_04 = 1;
     wrk->Clear(g_cleared);
-    wrk->_0c = 1;
+    wrk->SetClearSaveFlag(1);
 }
 
 void KeepCleared()
@@ -1864,6 +1880,135 @@ void KeepCleared()
 // Entry points
 // ──────────────────────────────────────────────────────────────────────
 
+static void RunSceneSmoke()
+{
+    static const char *range = std::getenv("REIPAN_SCENE_SMOKE");
+    if (range == nullptr)
+        return;
+    static int next = -1;
+    static int last = -1;
+    static int active = -1;
+    static int movie_tick_limit = 90;
+    static bool entered;
+    static bool stopped;
+    if (next < 0)
+    {
+        next = 0;
+        last = SCENE_NUM - 1;
+        // Optional third field 0 leaves the movie playing to its own end.
+        if (std::sscanf(range, "%d:%d:%d", &next, &last, &movie_tick_limit) < 1)
+            next = 0;
+        next = std::clamp(next, 0, SCENE_NUM);
+        last = std::clamp(last, next < SCENE_NUM ? next : SCENE_NUM - 1, SCENE_NUM - 1);
+    }
+    if (active >= 0)
+    {
+        const GPHASE_NODE *leaf = Leaf();
+        if (leaf != nullptr && (leaf->id == 89 || leaf->id == 90) &&
+            leaf->state == GPHASE_STATE_RUN)
+        {
+            if (!entered)
+                ReiPan_LogPrintf("[scene regression] scene %d entered playback phase %d\n", active, leaf->id);
+            entered = true;
+            if (leaf->id == 90 && movie_tick_limit > 0 &&
+                MovieCountGet() >= movie_tick_limit && !stopped)
+            {
+                playPssStop();
+                stopped = true;
+            }
+        }
+        if (!InPlay())
+            return;
+        ReiPan_LogPrintf("[scene regression] scene %d returned to play, entered=%d, skipped=%d\n",
+                         active, entered, stopped);
+        active = -1;
+    }
+    if (!InPlay() || g_job.kind != JOB_NONE || next > last)
+        return;
+    const int scene = next++;
+    const int file = GetFileNoFromSceneNo(scene);
+    const u_int size = GetFileSize(file);
+    if (size == 0 || size == (u_int)-1)
+    {
+        ReiPan_LogPrintf("[scene regression] scene %d has no playable data\n", scene);
+        return;
+    }
+    active = scene;
+    entered = stopped = false;
+    ReiPan_LogPrintf("[scene regression] scene %d requested, resource %04x\n", scene, file);
+    MovieReqPlay(scene, 1);
+}
+
+static void RunRoomSmoke()
+{
+    static const char *range = std::getenv("REIPAN_ROOM_SMOKE");
+    if (range == nullptr)
+        return;
+
+    static int next = 0;
+    static int last = 0;
+    static int area = 0;
+    static unsigned elapsed = 0;
+    static unsigned settle = 45;
+    if (next == 0)
+    {
+        if (std::sscanf(range, "%d:%d", &next, &last) != 2 ||
+            next < 1 || last < next || last > 52 ||
+            (next < kHouseFirst) != (last < kHouseFirst))
+        {
+            ReiPan_LogPrintf("[room regression] use a range within areas 1-46 or 47-52\n");
+            next = kAreaMax + 1;
+        }
+    }
+    if (area != 0)
+    {
+        if (g_tp.active || !InPlay())
+        {
+            if (++elapsed >= 450)
+            {
+                ReiPan_LogPrintf("[room regression] area %d timed out, teleport stage %d\n", area, g_tp.stage);
+                area = 0;
+                next = last + 1;
+            }
+            return;
+        }
+        if (--settle != 0)
+            return;
+
+        const auto *player = ingame_wrk.plyr_wrk;
+        const bool passed = g_tp.placed && MapAreaNoGet() == area && player != nullptr &&
+                            std::isfinite(player->pos[0]) && std::isfinite(player->pos[1]) &&
+                            std::isfinite(player->pos[2]);
+        if (player != nullptr)
+            ReiPan_LogPrintf("[room regression] area %d %s, current %d, position %.2f %.2f %.2f, draw %x\n",
+                             area, passed ? "loaded" : "failed", MapAreaNoGet(),
+                             player->pos[0], player->pos[1], player->pos[2], IngameGetDrawFlags());
+        else
+            ReiPan_LogPrintf("[room regression] area %d failed, no player\n", area);
+        area = 0;
+    }
+    if (!InPlay() || g_job.kind != JOB_NONE || g_tp.active || next > last)
+        return;
+
+    const int requested = next++;
+    const u_int pack_size = GetFileSize(RoomFileGetObjPack(requested));
+    if (pack_size == 0 || pack_size == (u_int)-1)
+    {
+        ReiPan_LogPrintf("[room regression] area %d has no object and positioning pack for this side\n", requested);
+        return;
+    }
+    area = requested;
+    elapsed = 0;
+    settle = 45;
+    WarpParams params = ChapterParams(ingame_wrk.b01);
+    params.area = area;
+    params.spawn = SPAWN_ROOM;
+    params.room_x = REIPAN_WARP_ROOM_CENTRE;
+    params.rot = REIPAN_WARP_KEEP_ROT;
+    g_tp = Teleport{true, 1, 0, params};
+    ReiPan_LogPrintf("[room regression] area %d requested\n", area);
+}
+
 void ReiPan_WarpFrame(void)
 {
     if (!g_env_done)
@@ -1878,6 +2023,7 @@ void ReiPan_WarpFrame(void)
     {
         fn();
     }
+    RunSceneSmoke();
 
     if (g_save_after > 0 && InPlay() && --g_save_after == 0)
     {
@@ -1902,7 +2048,12 @@ void ReiPan_WarpFrame(void)
     }
     if (g_phase_after > 0 && InPlay() && --g_phase_after == 0)
     {
-        GPhaseCtrlRequest(g_phase_id, 0);
+        if (g_phase_id == PHASE_STORY_SAVE)
+            StorySaveGameReq();
+        else if (g_phase_id == 46)
+            CassetteMenuReq();
+        else
+            GPhaseCtrlRequest(g_phase_id, 0);
         ReiPan_LogPrintf("[warp] phase %d\n", g_phase_id);
     }
     if (g_puzzle_after > 0 && InPlay() && --g_puzzle_after == 0)
@@ -1949,6 +2100,7 @@ void ReiPan_WarpFrame(void)
     KeepCleared();
     RunJob();
     RunTeleport();
+    RunRoomSmoke();
 }
 
 void ReiPan_WarpDrawWindow(bool *open)
@@ -1958,7 +2110,7 @@ void ReiPan_WarpDrawWindow(bool *open)
         return;
     }
     ImGui::SetNextWindowSize(ImVec2(560, 640), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Start point / snapshots", open))
+    if (!ImGui::Begin(UiText("Start point / snapshots"), open))
     {
         ImGui::End();
         return;

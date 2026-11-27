@@ -48,6 +48,9 @@ static float finder_view_turn_time;
 // for parts the ring gauges place themselves).
 SPRT_DAT hud_sprt[HUD_SPRT_NUM] =
 {
+#ifdef REIPAN_SLPS_25544_CHS
+#include "finder_view_slps25544.inc"
+#else
     { 0x200681a5dd30b32dull, 109,  79,  18,  16, 601, 206, 160, 0x80, 0, 0 },   // 0x00
     { 0x200681a5dd30b32dull, 109,  97,  18,   8, 601, 222, 160, 0x80, 0, 0 },   // 0x01
     { 0x200681a5dd30b32dull, 109,  79,  18,  16, 601, 418, 160, 0x80, 1, 0 },   // 0x02
@@ -295,6 +298,7 @@ SPRT_DAT hud_sprt[HUD_SPRT_NUM] =
     { 0x20067fa5dd30aeedull,  68,   8,  15,  16, 0, 0, 160, 0x80, 0, 0 },   // 0xf4
     { 0x20067fa5dd30aeedull,  85,   8,  15,  16, 0, 0, 160, 0x80, 0, 0 },   // 0xf5
     { 0x20067fa5dd30aeedull, 102,   8,  15,  16, 0, 0, 160, 0x80, 0, 0 },   // 0xf6
+#endif
 };
 
 // ──────────────────────────────────────────────────────────────────────

@@ -86,6 +86,7 @@ int  MemoSetRead(short memo);           // FF3 0x00203ab8: 1 when it was found
 int  MemoNextPage(short memo);          // FF3 0x00203b00
 int  MemoGetOpenPageNum(void);          // FF3 0x00203b48: pages found, all memos
 int  MemoGetAllPageNum(void);           // FF3 0x00203b90: pages of all memos
+short  MemoGetCurrentPageIndex(short memo);
 s_char MemoGetPageBreakNum(short memo, s_char page);    // FF3 0x00203c10
 void MemoDummy(void);                   // FF3 0x00203c80: empty
 

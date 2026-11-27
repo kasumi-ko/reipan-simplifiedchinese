@@ -10,7 +10,7 @@
  *
  *    0xf0..0xf8 <g>  glyph g of bank 1..9      0xfc <n>  number n (memory card slot)
  *    0xf9            current colour            0xfd <c>  colour label c
- *    0xfa <a>        arrange (in a window)     0xfe      line break
+ *    0xfa <a> <n>    arrange (in a window)     0xfe      line break
  *    0xfb            page break                0xff      end
  *
  *  Drawing goes straight to the GS (StartDmaDirectTrans): SetFontEnv sets

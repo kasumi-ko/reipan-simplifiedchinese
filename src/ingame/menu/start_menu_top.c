@@ -141,7 +141,7 @@ static void StartMenuTopUpdateSpr(void)
     B2dSprSetPos(B2dCtlFindItem(handle, SMT_TOP_CSR_ITEM), 0, pos * SMT_TOP_ROW_DY);
     B2dSprFreezePart(handle, SMT_TOP_CSR_ITEM, B2D_PART_X, 0);
     B2dSprFreezePart(handle, SMT_TOP_CSR_ITEM, B2D_PART_Y, 0);
-    if (GetFinderStateWrk()->_0c != 0) {
+    if (GetFinderStateWrk()->ClearSaveFlag() != 0) {
         item = B2dCtlFindItem(handle, SMT_TOP_ENTRY1_ITEM);
         B2dSprFreezePart(handle, SMT_TOP_ENTRY1_ITEM, B2D_PART_RGB, 0);
         B2dSprSetRgb(item, 0x40, 0x40, 0x40);
@@ -370,7 +370,7 @@ void StartMenuTopCsrFilter(short *tbl, short w, short h)
     (void)w;
     for (i = 0; i < h; i++, tbl++) {
         if (i == 1) {
-            *tbl = GetFinderStateWrk()->_0c == 0 ? 1 : -1;
+            *tbl = GetFinderStateWrk()->ClearSaveFlag() == 0 ? 1 : -1;
         } else {
             *tbl = (short)i;
         }
@@ -539,7 +539,7 @@ int one_StartMenu_Difficulty(void)
         EventDataLoad(0);
         IngameWrkSetDifficulty(diff);
         PlayTimeReset();
-        GetFinderStateWrk()->_0c = 0;
+        GetFinderStateWrk()->SetClearSaveFlag(0);
         PlyrSetHpByDifficulty((u_char)diff);
         next = 0x1d;
     } else if (CheckPadTrgPlaySe((u_short)pad_key[PAD_KEY_CANCEL], SMT_SE_CANCEL, 0) != 0) {

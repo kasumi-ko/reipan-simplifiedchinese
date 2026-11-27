@@ -387,7 +387,13 @@ int init_LangSel_Main(void)
 // FF3 0x001ed5d8.
 int one_LangSel_Main(void)
 {
+#ifdef REIPAN_SLPS_25544_CHS
+    GetSysWrk()->language = 2;
+    GetGPhaseCtrl()->SetNext(3, 0);
+    return 1;
+#else
     return LangSelMain() != 0;
+#endif
 }
 
 // FF3 0x001ed5f8.

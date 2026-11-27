@@ -42,6 +42,14 @@ struct FINDER_STATE_WRK             /* 0x10 */
     void SlotOpenFirstClear();              // FF3 0x001a5e90 (FinderSlotOpenFirstClear): what any clear unlocks (the object unused)
     void Clear(int difficulty);             // FF3 0x001a5f60 (FinderStateClear): GAME_CLEAR_ (count + unlocks)
 
+    int ClearSaveFlag() const { return _0c & 0xff; }
+    void SetClearSaveFlag(int value) { _0c = (_0c & ~0xff) | (value & 0xff); }
+#ifdef REIPAN_SLPS_25544_CHS
+    // The Japanese shop has one extra unlock. Keep the PC save blocks at their original size.
+    int PromoMovieState() const { return (_0c >> 8) & 3; }
+    void SetPromoMovieState(int value) { _0c = (_0c & ~0x300) | ((value & 3) << 8); }
+#endif
+
     /* 0x00 */ s_char cnt[4];       // clears per difficulty, 0..99 (AddClear); FUN_001a5e60 sums them
     /* 0x04 */ int    _04;          // GAME_CLEAR_ 0 sets it; opens gallery entry 2 (StartMenuGalleryIsOpen)
     /* 0x08 */ int    _08;          // GAME_CLEAR_ non-zero sets it; opens gallery entry 3

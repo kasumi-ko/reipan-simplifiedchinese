@@ -2863,7 +2863,7 @@ int EvGameClear(EV_EXE_CTRL *ctrl)
         wrk->_04 = 1;
     }
     wrk->Clear(difficulty);
-    wrk->_0c = 1;
+    wrk->SetClearSaveFlag(1);
     GameClearSetMode(find, ending);
     GameClearRequest();
     return 1;

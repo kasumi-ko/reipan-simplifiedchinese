@@ -18,6 +18,7 @@ struct MAP_ROOM_DAT;                    // ingame/map/MapLoad.h
 #define REG_LIST_NUM 16                 // RegDat slot ids per list
 
 int    RoomFileGetMdlPk4(int area);     // FF3 0x001f9b48: the area's model PK4 file
+int    RoomFileGetObjPack(int area);
 u_char RoomFileGetSide(int area);       // FF3 0x001f9b98: its obj_pack side (areas 0x2f..0x31, 0x34 follow MapAreaSideGet)
 void  *RoomFileMdlLoadReq(MAP_ROOM_DAT *dat, int area, void **addr);   // FF3 0x001f9c10: request 0; returns the load address
 void   RoomFileSetHit(MAP_ROOM_DAT *dat);           // FF3 0x001f9c48

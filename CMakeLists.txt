@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.20)
-project(ReiPan LANGUAGES CXX)
+project(ReiPan-SimplifiedChinese VERSION 0.1.0 LANGUAGES CXX)
+
+set(REIPAN_RELEASE_VERSION "${PROJECT_VERSION} beta")
+set(REIPAN_PROJECT_AUTHOR "kasumi-ko (霞詩@bilibili)")
+set(REIPAN_PROJECT_URL "https://github.com/kasumi-ko/reipan-simplifiedchinese")
+configure_file(cmake/reipan_version.h.in generated/reipan_version.h @ONLY)
 
 # PC port of Fatal Frame 3 / Project Zero 3 (SLES_538.25), reconstructed function by
 # function. The platform layer (src/reipan, src/sdk) comes from MioPan, the Fatal Frame 2
@@ -24,6 +29,10 @@ endif()
 set(REIPAN_ICON "${CMAKE_CURRENT_SOURCE_DIR}/extern/reipan.ico")
 if(WIN32 AND EXISTS "${REIPAN_ICON}")
     set(APP_ICON_RESOURCE_WINDOWS "${CMAKE_CURRENT_SOURCE_DIR}/extern/icon.rc")
+endif()
+if(WIN32)
+    configure_file(cmake/reipan_version.rc.in generated/reipan_version.rc @ONLY)
+    list(APPEND APP_ICON_RESOURCE_WINDOWS "${CMAKE_CURRENT_BINARY_DIR}/generated/reipan_version.rc")
 endif()
 
 set(BUILD_SHARED_LIBS OFF)
@@ -64,6 +73,11 @@ set(REIPAN_INCLUDE_DIRS
 set_source_files_properties(${REIPAN_TRANSLATION_UNITS} PROPERTIES LANGUAGE CXX)
 
 add_executable(ReiPan ${REIPAN_SOURCES} ${APP_ICON_RESOURCE_WINDOWS})
+set_target_properties(ReiPan PROPERTIES OUTPUT_NAME "${PROJECT_NAME}")
+option(REIPAN_SLPS_25544_CHS "Build for the adapted SLPS_255.44 Chinese game data" ON)
+if(REIPAN_SLPS_25544_CHS)
+    target_compile_definitions(ReiPan PRIVATE REIPAN_SLPS_25544_CHS=1)
+endif()
 add_dependencies(ReiPan compile_shaders)
 target_include_directories(ReiPan PRIVATE ${REIPAN_INCLUDE_DIRS})
 target_link_libraries(ReiPan PRIVATE
@@ -130,38 +144,9 @@ add_custom_command(TARGET ReiPan POST_BUILD
             "$<TARGET_FILE_DIR:ReiPan>/resources/fonts"
 )
 
-# ---- build stamp for the log banner -------------------------------------
-# Read at configure time and scoped to reipan_log.cpp so a new commit rebuilds only it.
-set(REIPAN_BUILD_COMMIT "unknown")
-find_package(Git QUIET)
-if(GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
-    execute_process(
-        COMMAND "${GIT_EXECUTABLE}" rev-parse --short=12 HEAD
-        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-        OUTPUT_VARIABLE REIPAN_GIT_COMMIT
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-        ERROR_QUIET
-    )
-    execute_process(
-        COMMAND "${GIT_EXECUTABLE}" status --porcelain --untracked-files=no
-        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-        OUTPUT_VARIABLE REIPAN_GIT_DIRTY
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-        ERROR_QUIET
-    )
-    if(REIPAN_GIT_COMMIT)
-        set(REIPAN_BUILD_COMMIT "${REIPAN_GIT_COMMIT}")
-        if(NOT REIPAN_GIT_DIRTY STREQUAL "")
-            string(APPEND REIPAN_BUILD_COMMIT "-dirty")
-        endif()
-    endif()
-endif()
-message(STATUS "Build stamp: ${REIPAN_BUILD_COMMIT}")
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/reipan/io/reipan_log.cpp"
-    PROPERTIES COMPILE_DEFINITIONS
-        "REIPAN_BUILD_COMMIT=\"${REIPAN_BUILD_COMMIT}\";REIPAN_BUILD_TYPE=\"${CMAKE_BUILD_TYPE}\""
-)
+set_property(SOURCE src/reipan/io/reipan_log.cpp APPEND PROPERTY
+    INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}/generated")
+message(STATUS "${PROJECT_NAME} ${REIPAN_RELEASE_VERSION}")
 
 # Force-include the EE base-type shim into every TU so u_char/u_int/u_long (64-bit) and
 # NULL are ambient exactly as the PS2 SDK's ubiquitous includes made them.

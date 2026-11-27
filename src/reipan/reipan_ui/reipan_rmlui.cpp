@@ -1,6 +1,7 @@
 #include "reipan_rmlui.h"
 #include "reipan_rml_options.h"
 #include "reipan_rml_pause.h"
+#include "reipan_ui_locale.h"
 #include "../io/reipan_file.h"
 #include "../io/reipan_input.h"
 #include "../io/reipan_paths.h"
@@ -129,6 +130,8 @@ struct RmlState
 
     bool rml_initialised = false;
     Rml::Context *context = nullptr;
+    std::vector<Rml::byte> chinese_font;
+    bool port_font_loaded = false;
 
     std::unordered_map<SDL_GPUTexture *, TextureRecord> textures;
 
@@ -356,6 +359,13 @@ public:
 class SystemInterface final : public Rml::SystemInterface
 {
 public:
+    int TranslateString(Rml::String &translated, const Rml::String &input) override
+    {
+        const auto text = ReiPanUiLocale::Translate(input);
+        translated.assign(text);
+        return text != input;
+    }
+
     double GetElapsedTime() override
     {
         return (double)SDL_GetTicksNS() / 1e9;
@@ -1160,6 +1170,27 @@ bool Init(SDL_Window *window, SDL_GPUDevice *device, SDL_GPUTextureFormat format
             SDL_Log("ReiPan RmlUi: could not load %s", font);
         }
     }
+    const std::string port_font = ReiPanUiLocale::PortFontPath();
+    const std::string chinese_font = port_font.empty() ? ReiPanUiLocale::ChineseFontPath() : port_font;
+    const int64_t font_size = chinese_font.empty() ? 0 : ReiPan_FileSize(chinese_font.c_str());
+    if (font_size > 0 && font_size <= 64 * 1024 * 1024)
+    {
+        g_rml.chinese_font.resize((size_t)font_size);
+        if (!ReiPan_FileReadAt(chinese_font.c_str(), 0, g_rml.chinese_font.data(), g_rml.chinese_font.size()) ||
+            !Rml::LoadFontFace(g_rml.chinese_font, port_font.empty() ? "Microsoft YaHei" : "LXGW WenKai GB",
+                               Rml::Style::FontStyle::Normal, Rml::Style::FontWeight::Normal, true))
+        {
+            SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "ReiPan RmlUi: unable to load Chinese fallback font");
+        }
+        else if (!port_font.empty())
+        {
+            // Port layouts request italic headings. This family has one upright Medium face.
+            Rml::LoadFontFace(g_rml.chinese_font, "LXGW WenKai GB",
+                              Rml::Style::FontStyle::Italic, Rml::Style::FontWeight::Normal, false);
+            g_rml.port_font_loaded = true;
+            SDL_Log("ReiPan RmlUi: using LXGW WenKai GB Medium");
+        }
+    }
 
     int width = 1;
     int height = 1;
@@ -1195,6 +1226,14 @@ void Shutdown()
     }
     ReleaseGpuResources();
     g_rml = RmlState();
+}
+
+Rml::ElementDocument *LoadDocument(Rml::Context *context, const char *path)
+{
+    Rml::ElementDocument *document = context->LoadDocument(path);
+    if (document != nullptr && g_rml.port_font_loaded)
+        document->SetProperty("font-family", "LXGW WenKai GB");
+    return document;
 }
 
 void ProcessEvent(const SDL_Event *event)

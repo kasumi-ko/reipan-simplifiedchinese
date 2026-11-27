@@ -25,6 +25,7 @@
  *  work; this file only draws.
  * ======================================================================== */
 #include "reipan/debug/reipan_events.h"
+#include "../reipan_ui/reipan_ui_locale.h"
 
 #include "ingame/event/prg/ev_change.h"         // EV_STATE_*
 #include "ingame/event/prg/ev_get.h"            // EV_TBL_OPEN_COND / EV_TBL_CLOSE_COND
@@ -39,6 +40,8 @@
 
 namespace
 {
+using ReiPanUiLocale::UiText;
+
 
 using ReiPanEvents::Catalogue;
 using ReiPanEvents::Event;
@@ -125,31 +128,31 @@ void EventTooltip(const Catalogue &cat, int id)
     }
     if (ev.entry)
     {
-        ImGui::TextDisabled("The Hour's start: what a new game in it runs.");
+        ImGui::TextDisabled(UiText("The Hour's start: what a new game in it runs."));
     }
     else if (ev.intro_leaf)
     {
-        ImGui::TextDisabled("The Hour's set-up: runs as soon as its start has.");
+        ImGui::TextDisabled(UiText("The Hour's set-up: runs as soon as its start has."));
     }
 
-    ImGui::SeparatorText("Opens on");
+    ImGui::SeparatorText(UiText("Opens on"));
     ImGui::TextUnformatted(ReiPanEvents::DescribeConditions(id, EV_TBL_OPEN_COND).c_str());
     const std::string close = ReiPanEvents::DescribeConditions(id, EV_TBL_CLOSE_COND);
     if (close.find("nothing") != 0)
     {
-        ImGui::SeparatorText("Closes on");
+        ImGui::SeparatorText(UiText("Closes on"));
         ImGui::TextUnformatted(close.c_str());
     }
-    ImGui::SeparatorText("Programs");
+    ImGui::SeparatorText(UiText("Programs"));
     ImGui::PushTextWrapPos(ImGui::GetFontSize() * 40.0f);
     ImGui::TextUnformatted(ReiPanEvents::DescribePrograms(id, false).c_str());
     ImGui::PopTextWrapPos();
     if (!ev.place.Known() && ev.go.Known())
     {
         ImGui::Separator();
-        ImGui::TextDisabled("No place of its own; Go takes her to %s.", ReiPanEvents::DescribePlace(ev.go).c_str());
+        ImGui::TextDisabled(UiText("No place of its own; Go takes her to %s."), ReiPanEvents::DescribePlace(ev.go).c_str());
     }
-    ImGui::TextDisabled("Click for everything, with the arguments.");
+    ImGui::TextDisabled(UiText("Click for everything, with the arguments."));
     ImGui::EndTooltip();
 }
 
@@ -166,28 +169,28 @@ void EventContextMenu(int id)
 
     ImGui::TextDisabled("ev%d%s%s", id, in_game ? " -- " : "", in_game ? ReiPanEvents::StateName(state) : "");
     ImGui::Separator();
-    if (ImGui::MenuItem("Start now", nullptr, false, in_game && !running && state != EV_STATE_LOCK))
+    if (ImGui::MenuItem(UiText("Start now"), nullptr, false, in_game && !running && state != EV_STATE_LOCK))
     {
         ReiPanEvents::ForceStart(id);
     }
     Tooltip("Run it without its open conditions -- the ROM's forced start\n"
             "(EV_SET_STATE 1), applied in the next frame's event pass.\n"
             "What it expects (a room, a ghost, an NPC) is not set up for it.");
-    if (ImGui::MenuItem("Mark as ended", nullptr, false,
+    if (ImGui::MenuItem(UiText("Mark as ended"), nullptr, false,
                         in_game && !running && state != EV_STATE_END && state != EV_STATE_LOCK))
     {
         ReiPanEvents::ForceEnd(id);
     }
     Tooltip("Set it to ended without running it, so whatever waits on it\n"
             "can go ahead.");
-    if (ImGui::MenuItem("Waiting again", nullptr, false, in_game && !running && state != EV_STATE_WAIT_OPEN))
+    if (ImGui::MenuItem(UiText("Waiting again"), nullptr, false, in_game && !running && state != EV_STATE_WAIT_OPEN))
     {
         ReiPanEvents::Rearm(id);
     }
     Tooltip("Put it back to waiting for its open conditions, so it can\n"
             "happen again.");
     ImGui::Separator();
-    if (ImGui::MenuItem("Copy id"))
+    if (ImGui::MenuItem(UiText("Copy id")))
     {
         char text[16];
         std::snprintf(text, sizeof(text), "%d", id);
@@ -219,7 +222,7 @@ void EventCells(const Rows &rows, int id)
     if (ev.chapter >= 0)
     {
         ImGui::BeginDisabled(!rows.can_jump);
-        if (ImGui::SmallButton("Jump"))
+        if (ImGui::SmallButton(UiText("Jump")))
         {
             ReiPanEvents::JumpToEvent(id);
         }
@@ -232,7 +235,7 @@ void EventCells(const Rows &rows, int id)
 
     const bool can_go = rows.can_go && ev.go.Known();
     ImGui::BeginDisabled(!can_go);
-    if (ImGui::SmallButton("Go"))
+    if (ImGui::SmallButton(UiText("Go")))
     {
         ReiPanEvents::TeleportToEvent(id);
     }
@@ -366,10 +369,10 @@ bool BeginEventTable(const char *id)
     }
 
     const float em = ImGui::GetFontSize();
-    ImGui::TableSetupColumn("Event", ImGuiTableColumnFlags_WidthStretch, 1.3f);
-    ImGui::TableSetupColumn("Starts on", ImGuiTableColumnFlags_WidthStretch, 2.4f);
-    ImGui::TableSetupColumn("Does", ImGuiTableColumnFlags_WidthStretch, 1.6f);
-    ImGui::TableSetupColumn("State", ImGuiTableColumnFlags_WidthFixed, em * 6.0f);
+    ImGui::TableSetupColumn(UiText("Event"), ImGuiTableColumnFlags_WidthStretch, 1.3f);
+    ImGui::TableSetupColumn(UiText("Starts on"), ImGuiTableColumnFlags_WidthStretch, 2.4f);
+    ImGui::TableSetupColumn(UiText("Does"), ImGuiTableColumnFlags_WidthStretch, 1.6f);
+    ImGui::TableSetupColumn(UiText("State"), ImGuiTableColumnFlags_WidthFixed, em * 6.0f);
     ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, em * 5.5f);
     ImGui::TableHeadersRow();
     return true;
@@ -456,7 +459,7 @@ void DrawStoryTab(const Rows &rows)
         if (ImGui::CollapsingHeader(header))
         {
             ImGui::BeginDisabled(!rows.can_jump);
-            if (ImGui::Button("Start from the beginning"))
+            if (ImGui::Button(UiText("Start from the beginning")))
             {
                 ReiPanEvents::StartChapter(c);
             }
@@ -543,12 +546,12 @@ void DrawJudged(const char *title, const std::vector<std::vector<ReiPanEvents::L
     {
         if (g != 0)
         {
-            ImGui::TextDisabled("  or");
+            ImGui::TextDisabled(UiText("  or"));
             copy += "\n  or";
         }
         if (groups[g].empty())
         {
-            ImGui::TextDisabled("    nothing (at once)");
+            ImGui::TextDisabled(UiText("    nothing (at once)"));
             copy += "\n    nothing (at once)";
         }
         for (const ReiPanEvents::LiveCond &c : groups[g])
@@ -572,7 +575,7 @@ void DrawDetails(const Catalogue &cat)
 {
     if (g_selected < 0 || g_selected >= (int)cat.events.size())
     {
-        ImGui::TextDisabled("Click an event to see all of it here.");
+        ImGui::TextDisabled(UiText("Click an event to see all of it here."));
         return;
     }
 
@@ -608,30 +611,30 @@ void DrawDetails(const Catalogue &cat)
     }
     if (ev.go.Known())
     {
-        text += "\ngo: " + ReiPanEvents::DescribePlace(ev.go) + (ev.place.Known() ? "" : " (inherited)");
+        text += "\ngo: " + ReiPanEvents::DescribePlace(ev.go) + (ev.place.Known() ? "" : UiText(" (inherited)"));
     }
     const std::string programs = ReiPanEvents::DescribePrograms(id, true);
 
     // Drawn first and copied a frame late: the copy is built as it draws.
     static std::string copy;
-    if (ImGui::SmallButton("Copy"))
+    if (ImGui::SmallButton(UiText("Copy")))
     {
         ImGui::SetClipboardText(copy.c_str());
     }
     Tooltip("Copy all of this, the judgement included, to paste in a note\n"
             "or a bug report.");
     ImGui::SameLine();
-    if (ImGui::SmallButton("Parent") && ev.parent >= 0)
+    if (ImGui::SmallButton(UiText("Parent")) && ev.parent >= 0)
     {
         g_selected = ev.parent;
     }
     ImGui::SameLine();
-    if (ImGui::SmallButton("Clear"))
+    if (ImGui::SmallButton(UiText("Clear")))
     {
         g_selected = -1;
     }
     ImGui::SameLine();
-    ImGui::TextDisabled("(conditions judged now: yes / no; ? not judged here)");
+    ImGui::TextDisabled(UiText("(conditions judged now: yes / no; ? not judged here)"));
 
     ImGui::BeginChild("##details_text", ImVec2(0, 0), ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar);
     ImGui::TextUnformatted(text.c_str());
@@ -649,8 +652,8 @@ void DrawDetails(const Catalogue &cat)
 // of what is in them comes out of the file.
 void DrawWithoutCatalogue(bool can_start, const char *why)
 {
-    ImGui::TextWrapped("The event list is read out of the game's event file, which a game loads. "
-                       "Start an Hour (or any game) and it fills in; it stays up at the title.");
+    ImGui::TextWrapped(UiText("The event list is read out of the game's event file, which a game loads. "
+                       "Start an Hour (or any game) and it fills in; it stays up at the title."));
     ImGui::Separator();
 
     for (int c = 0; c < ReiPanEvents::kChapterCount; c++)
@@ -662,19 +665,21 @@ void DrawWithoutCatalogue(bool can_start, const char *why)
             ReiPanEvents::StartChapter(c);
         }
         ImGui::EndDisabled();
-        Tooltip(can_start ? "A new game in this Hour, from its start event." : why);
+        Tooltip(can_start ? UiText("A new game in this Hour, from its start event.") : why);
         ImGui::PopID();
     }
 }
 
 void DrawHeader()
 {
-    ImGui::TextWrapped("%s", ReiPanEvents::Status().c_str());
+    const std::string status = ReiPanEvents::Status();
+    const auto translated = ReiPanUiLocale::Translate(status);
+    ImGui::TextWrapped("%.*s", (int)translated.size(), translated.data());
     if (ReiPanEvents::Busy())
     {
         if (ReiPanEvents::CanProceed())
         {
-            if (ImGui::SmallButton("Teleport anyway"))
+            if (ImGui::SmallButton(UiText("Teleport anyway")))
             {
                 ReiPanEvents::Proceed();
             }
@@ -682,7 +687,7 @@ void DrawHeader()
                     "room change cuts it short, so expect it to misbehave.");
             ImGui::SameLine();
         }
-        if (ImGui::SmallButton("Cancel"))
+        if (ImGui::SmallButton(UiText("Cancel")))
         {
             ReiPanEvents::Cancel();
         }
@@ -691,13 +696,13 @@ void DrawHeader()
     const ReiPanEvents::Place here = ReiPanEvents::PlayerPlace();
     if (here.Known())
     {
-        ImGui::TextDisabled("Playing %s, %s, %s", ReiPanEvents::ChapterLabel(ReiPanEvents::CurrentChapter()),
+        ImGui::TextDisabled(UiText("Playing %s, %s, %s"), ReiPanEvents::ChapterLabel(ReiPanEvents::CurrentChapter()),
                             ReiPanEvents::DescribePlace(here).c_str(),
-                            ReiPanEvents::CurrentWorld() == 1 ? "real world" : "dream");
+                            ReiPanEvents::CurrentWorld() == 1 ? UiText("real world") : "dream");
     }
     else
     {
-        ImGui::TextDisabled("Not in a game.");
+        ImGui::TextDisabled(UiText("Not in a game."));
     }
 }
 
@@ -712,7 +717,7 @@ void ReiPan_EventsDrawWindow(bool *open)
 
     const float em = ImGui::GetFontSize();
     ImGui::SetNextWindowSize(ImVec2(em * 62.0f, em * 44.0f), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Event browser", open))
+    if (!ImGui::Begin(UiText("Event browser"), open))
     {
         ImGui::End();
         return;
@@ -735,15 +740,15 @@ void ReiPan_EventsDrawWindow(bool *open)
     }
 
     ImGui::SetNextItemWidth(em * 16.0f);
-    ImGui::InputTextWithHint("##filter", "Filter: ev438, movie, area 47, examine...", g_filter, sizeof(g_filter));
+    ImGui::InputTextWithHint("##filter", UiText("Filter: ev438, movie, area 47, examine..."), g_filter, sizeof(g_filter));
     ImGui::SameLine();
-    ImGui::Checkbox("Hide flags", &g_hide_flags);
+    ImGui::Checkbox(UiText("Hide flags"), &g_hide_flags);
     Tooltip("Hide events with no program and no sub-events: markers other\n"
             "events test, with nothing to see.");
     if (!cat->from_memory)
     {
         ImGui::SameLine();
-        ImGui::TextDisabled("(event file from the last game)");
+        ImGui::TextDisabled(UiText("(event file from the last game)"));
     }
 
     const Rows rows = {*cat, can_jump, jump_why, can_go, go_why, Lower(g_filter)};
@@ -754,14 +759,14 @@ void ReiPan_EventsDrawWindow(bool *open)
     ImGui::BeginChild("##list", ImVec2(0, list > em * 6.0f ? list : em * 6.0f));
     if (ImGui::BeginTabBar("##events"))
     {
-        if (ImGui::BeginTabItem("Story"))
+        if (ImGui::BeginTabItem(UiText("Story")))
         {
             ImGui::BeginChild("##story");
             DrawStoryTab(rows);
             ImGui::EndChild();
             ImGui::EndTabItem();
         }
-        if (ImGui::BeginTabItem("Rooms"))
+        if (ImGui::BeginTabItem(UiText("Rooms")))
         {
             ImGui::TextDisabled("Examine points, doors and pick-ups, a group per area. They run in "
                                 "every Hour; their conditions say which.");
@@ -770,9 +775,9 @@ void ReiPan_EventsDrawWindow(bool *open)
             ImGui::EndChild();
             ImGui::EndTabItem();
         }
-        if (ImGui::BeginTabItem("Shared"))
+        if (ImGui::BeginTabItem(UiText("Shared")))
         {
-            ImGui::TextDisabled("The bed, the ways between the worlds, and the trees of no Hour or area.");
+            ImGui::TextDisabled(UiText("The bed, the ways between the worlds, and the trees of no Hour or area."));
             ImGui::BeginChild("##shared");
             DrawSharedTab(rows);
             ImGui::EndChild();
@@ -782,7 +787,7 @@ void ReiPan_EventsDrawWindow(bool *open)
     }
     ImGui::EndChild();
 
-    ImGui::SeparatorText("Details");
+    ImGui::SeparatorText(UiText("Details"));
     ImGui::BeginChild("##details");
     DrawDetails(*cat);
     ImGui::EndChild();

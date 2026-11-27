@@ -651,7 +651,9 @@ void *MapLoadSlotReq(int file_no, int slot, void **addr)
     void *old = *addr;
 
     *addr = LoadReqGetAddr(file_no, old, &map_load_slot[slot]);
-    return old;
+    // A table label consumes no storage. In that case the next file can
+    // start at old, so it must not be exposed as this file's address.
+    return map_load_slot[slot] >= 0 ? old : nullptr;
 }
 
 void MapLoadHookNop(void)

@@ -103,11 +103,17 @@ void AlbumPhotoPrintDate(s_char side, s_char no, int x, int y, int step, int alp
 
     CdClockBcdToInt(date, &AlbumGetPhoto(side, no)->time);
 
-    PrintNumber_N(date[2], 2, x, y, ALBUM_INFO_COL, alpha, pri, 1, 1);
-    PrintMsg_ArrangeOneLine(GetMsgDataAddr(0x82, 6), x + step * 2, y, ALBUM_INFO_COL, alpha, pri, 0, 0, 0);
+#ifdef REIPAN_SLPS_25544_CHS
+    // SLPS_255.44 0x121c6c..0x121d64 uses year, month, day.
+    constexpr int first = 0, last = 2, separator_group = 0x81;
+#else
+    constexpr int first = 2, last = 0, separator_group = 0x82;
+#endif
+    PrintNumber_N(date[first], 2, x, y, ALBUM_INFO_COL, alpha, pri, 1, 1);
+    PrintMsg_ArrangeOneLine(GetMsgDataAddr(separator_group, 6), x + step * 2, y, ALBUM_INFO_COL, alpha, pri, 0, 0, 0);
     PrintNumber_N(date[1], 2, x + step * 3, y, ALBUM_INFO_COL, alpha, pri, 1, 1);
-    PrintMsg_ArrangeOneLine(GetMsgDataAddr(0x82, 6), x + step * 5, y, ALBUM_INFO_COL, alpha, pri, 0, 0, 0);
-    PrintNumber_N(date[0], 2, x + step * 6, y, ALBUM_INFO_COL, alpha, pri, 1, 1);
+    PrintMsg_ArrangeOneLine(GetMsgDataAddr(separator_group, 6), x + step * 5, y, ALBUM_INFO_COL, alpha, pri, 0, 0, 0);
+    PrintNumber_N(date[last], 2, x + step * 6, y, ALBUM_INFO_COL, alpha, pri, 1, 1);
 
     PrintNumber_N(date[3], 2, x + step * 9, y, ALBUM_INFO_COL, alpha, pri, 1, 1);
     PrintMsg_ArrangeOneLine(GetMsgDataAddr(0x67, 3), x + step * 11, y, ALBUM_INFO_COL, alpha, pri, 0, 0, 0);

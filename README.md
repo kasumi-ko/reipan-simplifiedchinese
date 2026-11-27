@@ -1,34 +1,33 @@
-# ReiPan
-Fatal Frame 3 PC Port
+# ReiPan-SimplifiedChinese
 
-## Build
+零～刺青之声～ PC 移植的简体中文适配，当前版本为 **0.1.0 beta**。
 
-Requires a C/C++ compiler, CMake, Make, Git and SDL3's system development
-packages. Dependencies are fetched automatically. Linux builds a minimal static
-FFmpeg (MPEG-2 decoder, parser and colour conversion); movie demuxing and PCM
-audio are handled by the game. Windows uses prebuilt FFmpeg from `extern/ffmpeg`.
+简体中文适配作者为 **kasumi-ko (霞詩@bilibili)**。项目基于 Mikompilation 的 ReiPan，保留 GPL-3.0 许可证与上游署名。
+
+[项目主页](https://github.com/kasumi-ko/reipan-simplifiedchinese) · [上游项目](https://github.com/Mikompilation/ReiPan) · [回归与发布清单](TODO.md)
+
+## Windows 构建
+
+使用 MSYS2 MinGW64 的 GCC、CMake、Ninja 和 Git。CMake 会获取库依赖，Windows 的 FFmpeg 位于 `extern/ffmpeg`。
 
 ```sh
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DREIPAN_COMPILE_SHADERS=OFF
+cmake --build build --target ReiPan
 ```
 
-The executable is `build/ReiPan/ReiPan`. To reuse checked-in shader bytecode,
-configure with `-DREIPAN_COMPILE_SHADERS=OFF`.
+构建结果位于 `build/ReiPan/ReiPan-SimplifiedChinese.exe`。运行时需要同目录的 `resources` 和 FFmpeg DLL。
 
-## Game files
+## 准备游戏数据
 
-ReiPan does not include the game, and only the European version works: Project
-Zero 3, SLES-53825. The first time it starts without finding it, it asks for your
-own copy:
+使用你自己的 `SLPS_255.44` 简体中文 ISO 和 Python 3.9 或更新版本。运行以下命令，在 EXE 旁生成 `data` 目录。
 
-- **Disc image (.iso):** ReiPan plays straight from it.
-- **IMG_BD.BIN:** the game's data copied from the disc, with `ZERO3.FHD` from the
-  disc in the same folder.
+```powershell
+python tools/prepare_slps25544.py "D:\Games\Fatal Frame III CHS.iso" build/ReiPan/data
+```
 
-Your choice is checked, then saved as `data_folder` under `[paths]` in
-`reipan.ini`. Change it later in **Settings → Game data folder…**. A folder holding those
-files beside the executable or above it is found without asking.
+工具以只读方式打开 ISO，根据同盘资源表生成适配文件，并找回 ISO 目录记录末尾之外的 95 项资源。输出目录需要约 2.74 GB 可用空间。程序自动识别同目录的 `data`，放在其他位置时可在游戏数据选择器中选择适配后的 `IMG_BD.BIN`。路径保存在 `reipan.ini`。
+
+主菜单和暂停菜单的「设置」可打开移植版选项。默认用 WASD 移动、左 Shift 奔跑、鼠标右键举起相机、左键拍摄。F1 切换当次运行的调试栏。
 
 ## Graphics API
 

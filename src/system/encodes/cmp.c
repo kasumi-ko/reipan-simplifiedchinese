@@ -38,11 +38,6 @@
 // PC: resolve the two header-relative fields (see the banner). Where these
 // appear, the ROM read header->data_offset / header->div_p directly.
 
-static u_char *CmpDataTop(const CMP_HEADER *header)
-{
-    return (u_char *)header + header->data_offset;
-}
-
 static ENCODE_DIV_SECTION *CmpDivTbl(const CMP_HEADER *header)
 {
     return (ENCODE_DIV_SECTION *)((u_char *)header + header->div_p);
@@ -66,23 +61,50 @@ void CMP_DecodeOne(CMP_HEADER *header, int no, uintptr_t from_adrs, uintptr_t to
 }
 
 // ──────────────────────────────────────────────────────────────────────
-// Expand the whole file into `decode_buf` and answer its expanded size. The
-// output cursor moves by div_size per block unconditionally, so the buffer
-// must hold div_num * div_size bytes, not header->size (reipan_fileload.cpp
-// checks that).
+// Decode into the file's aligned destination. Some final B2d blocks include
+// their 16-byte alignment padding in the compressed stream.
 // FF3 0x00271b60; from MioPan cmp.c (unchanged). No caller in the ROM.
 
-int CMP_Decode(CMP_HEADER *header, void *decode_buf)
+int CMP_Decode(const CMP_HEADER *header, size_t stored_size, void *decode_buf,
+               size_t output_size)
 {
-    uintptr_t now_adrs = (uintptr_t)decode_buf;
-    int       now_size = 0;
+    if (stored_size < sizeof(*header) || header->size <= 0 ||
+        (size_t)header->size > output_size || output_size - header->size >= 16 ||
+        header->div_size <= 0 || header->div_num != 1 + (header->size - 1) / header->div_size ||
+        header->div_p < (int)sizeof(*header) || header->data_offset < header->div_p ||
+        (size_t)header->data_offset > stored_size ||
+        (header->div_p % alignof(ENCODE_DIV_SECTION)) != 0 ||
+        (size_t)header->div_num > (size_t)(header->data_offset - header->div_p) / sizeof(ENCODE_DIV_SECTION))
+        return -1;
 
+    const ENCODE_DIV_SECTION *blocks = CmpDivTbl(header);
+    const u_char *input = (const u_char *)header;
+    u_char *output = (u_char *)decode_buf;
+    size_t offset = header->data_offset;
+    int remaining = header->size;
     for (int i = 0; i < header->div_num; i++)
     {
-        CMP_DecodeOne(header, i, (uintptr_t)(CmpDataTop(header) + now_size), now_adrs);
-
-        now_adrs += (uintptr_t)header->div_size;
-        now_size += (int)GetAlignUp(CmpDivTbl(header)[i].size, 4);
+        const ENCODE_DIV_SECTION &block = blocks[i];
+        const size_t padded = GetAlignUp(block.size, 4);
+        const int expected = remaining < header->div_size ? remaining : header->div_size;
+        if (block.size == 0 || padded > stored_size - offset)
+            return -1;
+        if (block.type == ENCODE_TYPE_SLIDE)
+        {
+            const int capacity = remaining == expected
+                ? expected + (int)(output_size - header->size) : expected;
+            if (SlideDecode(input + offset, output, block.size, capacity) < expected)
+                return -1;
+        }
+        else
+        {
+            if (block.type != ENCODE_TYPE_NONE || block.size != expected)
+                return -1;
+            memcpy(output, input + offset, block.size);
+        }
+        offset += padded;
+        output += expected;
+        remaining -= expected;
     }
 
     return header->size;

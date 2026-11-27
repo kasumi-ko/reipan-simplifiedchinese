@@ -339,7 +339,12 @@ std::string ComputeUserDir()
     /* A scripted run keeps its saves and settings apart from the player's. */
     const char *override_dir = std::getenv("REIPAN_USER_DIR");
     const bool  overridden = override_dir != nullptr && override_dir[0] != '\0';
-    char *pref = overridden ? nullptr : SDL_GetPrefPath("Mikompilation", "ReiPan");
+#ifdef REIPAN_SLPS_25544_CHS
+    const char *profile = "ReiPan-CHS";
+#else
+    const char *profile = "ReiPan";
+#endif
+    char *pref = overridden ? nullptr : SDL_GetPrefPath("Mikompilation", profile);
     if (overridden)
     {
         dir = WithTrailingSlash(override_dir);
@@ -403,10 +408,16 @@ std::string ExistingIsoSpelling(const std::string &path)
  * with what it describes beside it -- the disc's IMG_BD.BIN or either spelling of
  * an extracted tree.  Each file with or without its ";1".
  */
+int FindGameBeside(const std::string &archive, const std::string &folder);
+
 bool LooksLikeDataRoot(const std::string &dir)
 {
     const std::string root = WithTrailingSlash(dir);
 
+#ifdef REIPAN_SLPS_25544_CHS
+    const std::string archive = ExistingIsoSpelling(root + "IMG_BD.BIN");
+    return !archive.empty() && FindGameBeside(archive, root) == REIPAN_GAMEFILE_OK;
+#else
     if (ExistingIsoSpelling(root + "ZERO3.FHD").empty())
     {
         return false;
@@ -414,6 +425,7 @@ bool LooksLikeDataRoot(const std::string &dir)
     return !ExistingIsoSpelling(root + "IMG_BD.BIN").empty() ||
            DirExists(root + "bin/data") ||
            DirExists(root + "bin2/data");
+#endif
 }
 
 /*
@@ -456,6 +468,10 @@ int CheckFileTable(const std::vector<unsigned char> &table, uint64_t archive_siz
     }
     std::memcpy(&header, table.data(), sizeof(header));
 
+#ifdef REIPAN_SLPS_25544_CHS
+    if (header._028[0] != 0x53484352u)
+        return REIPAN_GAMEFILE_OTHER_RELEASE;
+#endif
     const uint64_t count = (uint64_t)CD_FILE_DAT_NUM;
     const uint64_t tables = count * sizeof(uint32_t);
     if (header.magic != CDDAT_FHD_MAGIC || header.file_num != CD_FILE_DAT_NUM ||
@@ -562,7 +578,28 @@ int FindGameBeside(const std::string &archive, const std::string &folder)
     {
         return REIPAN_GAMEFILE_UNREADABLE;
     }
-    return CheckFileTable(bytes, (uint64_t)archive_size);
+    const int checked = CheckFileTable(bytes, (uint64_t)archive_size);
+#ifdef REIPAN_SLPS_25544_CHS
+    if (checked == REIPAN_GAMEFILE_OK)
+    {
+        CDDAT_HEADER header;
+        std::memcpy(&header, bytes.data(), sizeof(header));
+        static const struct { int file; const char *name; } overrides[] = {
+            { MSG_OBJ, "bin/data/msg/reipan_msg.obj" },
+            { SUBTITLE_OBJ, "bin/data/subtitle/reipan_subtitle.obj" },
+            { CAPTION_PHF, "bin/data/2ddata/b2d/reipan_caption.b2d" },
+        };
+        for (const auto &entry : overrides)
+        {
+            const auto size = TableWord(bytes, header.size_tbl + (uint64_t)entry.file * 4);
+            if (ReiPan_FileSize((folder + entry.name).c_str()) != size)
+                return REIPAN_GAMEFILE_CUT_SHORT;
+        }
+        if (ReiPan_FileSize((folder + "font_widths.bin").c_str()) != 2100)
+            return REIPAN_GAMEFILE_CUT_SHORT;
+    }
+#endif
+    return checked;
 }
 
 /* A file is a disc image or nothing here: IMG_BD.BIN itself is named by the
@@ -850,7 +887,11 @@ int ReiPan_PathHasGameFiles(void)
     const char *env = std::getenv("REIPAN_DATA_DIR");
     if (env != nullptr && env[0] != '\0')
     {
+#ifdef REIPAN_SLPS_25544_CHS
+        return LooksLikeDataRoot(env) ? 1 : 0;
+#else
         return 1;
+#endif
     }
 
     const char *configured = reipan_config.paths.data_folder;

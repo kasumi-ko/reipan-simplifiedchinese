@@ -92,6 +92,11 @@ u_char RoomFileGetSide(int area)
     return row->side;
 }
 
+int RoomFileGetObjPack(int area)
+{
+    return ROS00_0_PHF + area * 7 + RoomFileGetSide(area);
+}
+
 // ──────────────────────────────────────────────────────────────────────
 // Load request 0: the area's model PK4 to *addr.
 // FF3 0x001f9c10.
@@ -162,10 +167,9 @@ void RoomFileLoadEnd(MAP_ROOM_DAT *dat)
 void *RoomObjPackLoadReq(int area, MAP_ROOM_DAT *dat)
 {
     void *addr = EeToHost(dat->load_addr);
-    int   side = RoomFileGetSide(area);
 
     dat->file[ROOM_FILE_MDL_PK4] = HostToEe(RoomFileMdlLoadReq(dat, area, &addr));
-    dat->file[ROOM_FILE_OBJ_PACK] = HostToEe(MapLoadSlotReq(ROS00_0_PHF + area * 7 + side, 2, &addr));
+    dat->file[ROOM_FILE_OBJ_PACK] = HostToEe(MapLoadSlotReq(RoomFileGetObjPack(area), 2, &addr));
     RoomLoadAddrSetBase(dat->room, addr);
     return addr;
 }
@@ -184,7 +188,7 @@ int RoomObjPackIsLoadEnd(void)
 
 void *RoomObjPackLoadEnd(MAP_ROOM_DAT *dat)
 {
-    void *pack = EeToHost(dat->file[ROOM_FILE_OBJ_PACK]);
+    void *pack = dat->file[ROOM_FILE_OBJ_PACK] != 0 ? EeToHost(dat->file[ROOM_FILE_OBJ_PACK]) : nullptr;
     int   num  = PhfGetFileNum(pack);
     void *pos;
     int   room;

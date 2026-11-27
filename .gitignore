@@ -1,8 +1,13 @@
 # Game executables and data are not distributed; dump them from your own disc.
 SLES_538.25
 SLES_538.25.bak
+SLPS_255.44
+IMG_BD.BIN
+ZERO3.FHD
 *.ISO
 *.iso
+/data/
+/.reipan-data-*/
 
 # Regenerated reversing intermediates (Ghidra dumps, features, snapshots)
 tools/reverse/work/

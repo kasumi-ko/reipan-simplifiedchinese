@@ -27,6 +27,7 @@
 #include "album/prg/album.h"                // AlbumSlotInfoClearAll / SetCur, AlbumCurInfoSetSlot
 #include "album/prg/album_load_scr.h"       // AlbumLoadScrSlotSelIsOpen, AlbumLoadScrListIsIn, AlbumLoadScrMsgIsOpen
 #include "album/prg/album_mem.h"            // AlbumMemInit / Main / Free, GetAlbumMemAddr
+#include "graphics/motion/anicode.h"         // SlotSelMouse
 #include "ingame/sound/snd_ctrl.h"          // SndSePlay
 #include "system/mc/prg/mc.h"               // MemoryCardExeInit, MemoryCardEnd
 #include "system/mc/prg/mc_check.h"
@@ -215,7 +216,7 @@ static void AlbumLoadSlotSelPad(void)
         return;
     }
 
-    ReiPan_MenuMouseBegin(REIPAN_MM_WHEEL_VERTICAL, nullptr);    // PC
+    SlotSelMouse(album_load_ctrl.slot_csr);
 
     if (CheckPadRptPlaySe(ALBUM_LOAD_PAD_UP, ALBUM_LOAD_SE_CSR, 0) ||
         CheckPadRptPlaySe(ALBUM_LOAD_PAD_DOWN, ALBUM_LOAD_SE_CSR, 0))

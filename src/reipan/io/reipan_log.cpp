@@ -68,15 +68,7 @@
 #include <string>
 #include <vector>
 
-/* Build stamp.  Supplied per-source by CMakeLists.txt so that a new commit
- * rebuilds this file and not the other thousand-odd translation units; absent
- * when the tree was configured without git, which is not worth failing over. */
-#ifndef REIPAN_BUILD_COMMIT
-#define REIPAN_BUILD_COMMIT "unknown"
-#endif
-#ifndef REIPAN_BUILD_TYPE
-#define REIPAN_BUILD_TYPE "unknown"
-#endif
+#include "reipan_version.h"
 
 namespace
 {
@@ -536,10 +528,9 @@ void WriteBanner(spdlog::level::level_enum level, bool rom_enabled)
 {
     const int linked = SDL_GetVersion();
 
-    g_port->info("======== ReiPan ========================================"
-                 "====================");
-    g_port->info("build     : {} {}  commit {}  ({})", __DATE__, __TIME__,
-                 REIPAN_BUILD_COMMIT, REIPAN_BUILD_TYPE);
+    g_port->info("{} {}", REIPAN_PROJECT_NAME, REIPAN_RELEASE_VERSION);
+    g_port->info("author    : {}", REIPAN_PROJECT_AUTHOR);
+    g_port->info("project   : {}", REIPAN_PROJECT_URL);
     g_port->info("platform  : {}  {} logical cores  {} MB RAM",
                  SDL_GetPlatform(), SDL_GetNumLogicalCPUCores(),
                  SDL_GetSystemRAM());

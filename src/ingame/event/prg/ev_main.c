@@ -30,7 +30,7 @@
 #include "ingame/ingame_wrk.h"                  // ingame_wrk
 #include "ingame/plyr/player.h"                 // PLYR_WRK, PLYR_MODE, PlyrDeathIsRevived
 #include "reipan/reipan_memory.h"               // ReiPan_GetHostPointer
-#include "system/eeiop/cd_file_dat.h"           // EVENT_OBJ, ...
+#include "system/eeiop/cddat.h"                 // file IDs and GetFileSize
 #include "system/os/eecdvd.h"                   // LoadReqGetAddr, IsLoadEnd
 #include "system/os/system.h"                   // GetPALMode
 
@@ -142,7 +142,8 @@ void EventDataLoad(int mission)
     int file = EVENT_OBJ;
 
     if (mission == 1) {
-        file = (GetPALMode() == 0) ? EV_MISSION_OBJ : EV_MISSION_50_OBJ;
+        file = GetPALMode() != 0 && GetFileSize(EV_MISSION_50_OBJ) != (u_int)-1
+            ? EV_MISSION_50_OBJ : EV_MISSION_OBJ;
     } else if (ev_main_wrk.mode == 1 || ev_main_wrk.mode == 2) {
         file = EVENT_DB_OBJ;
     }

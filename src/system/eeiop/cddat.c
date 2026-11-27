@@ -26,6 +26,11 @@ static CDDAT_HEADER *p_cd_dat;          /* sbss gp-0xce0 */
 static char file_full_name[256];        /* bss 0x410eb0: GetFileName's result */
 static char title_root_path[200];       /* bss 0x410fb0: cddatInit's pc_path */
 
+static bool ValidFileNumber(int file_no)
+{
+    return p_cd_dat != nullptr && file_no >= 0 && file_no < p_cd_dat->file_num;
+}
+
 // ──────────────────────────────────────────────────────────────────────
 // PC: FF3 rewrites the header's table offsets into EE pointers in place
 // (cddatSetHeader). A host pointer does not fit the 32-bit slots, so ReiPan
@@ -74,7 +79,7 @@ void cddatInit(const char *pc_path, void *fhd)
 
 char GetFileExtLabel(int file_no)
 {
-    if (p_cd_dat->ext_lbl != 0)
+    if (ValidFileNumber(file_no) && p_cd_dat->ext_lbl != 0)
     {
         return CdDatTbl<s_char>(p_cd_dat->ext_lbl)[file_no];
     }
@@ -87,7 +92,7 @@ char GetFileExtLabel(int file_no)
 
 int GetFileNum(void)
 {
-    return p_cd_dat->file_num;
+    return p_cd_dat != nullptr ? p_cd_dat->file_num : 0;
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -97,6 +102,8 @@ int GetFileNum(void)
 
 int GetFileStartSector(int file_no)
 {
+    if (!ValidFileNumber(file_no))
+        return -1;
     if (p_cd_dat->use_cd_image != 0 && p_cd_dat->lba_tbl != 0)
     {
         return CdDatTbl<int>(p_cd_dat->lba_tbl)[file_no];
@@ -122,6 +129,9 @@ int GetFileSectorSize(int file_no)
 
 u_int GetFileSize(int file_no)
 {
+    if (!ValidFileNumber(file_no))
+        return (u_int)-1;
+
     // PC: QueryFileSize is empty in retail and leaves size unset; start from
     // "no file" so that branch answers something defined.
     int size = -1;
@@ -150,7 +160,7 @@ u_int GetFileSize(int file_no)
 
 u_int GetFileCmpSize(int file_no)
 {
-    if (p_cd_dat->cmp_tbl == 0)
+    if (!ValidFileNumber(file_no) || p_cd_dat->cmp_tbl == 0)
     {
         return 0;
     }
@@ -171,7 +181,7 @@ u_int GetFileCmpSize(int file_no)
 
 int cddatIsCmpFile(int file_no)
 {
-    if (p_cd_dat->cmp_tbl != 0)
+    if (ValidFileNumber(file_no) && p_cd_dat->cmp_tbl != 0)
     {
         return (int)(CdDatTbl<u_int>(p_cd_dat->cmp_tbl)[file_no] & 1);
     }
@@ -185,7 +195,7 @@ int cddatIsCmpFile(int file_no)
 
 int cddatSearchFileName(const char *name)
 {
-    if (p_cd_dat->name_tbl != 0 && p_cd_dat->file_num > 0)
+    if (p_cd_dat != nullptr && p_cd_dat->name_tbl != 0 && p_cd_dat->file_num > 0)
     {
         for (int i = 0; i < p_cd_dat->file_num; i++)
         {
@@ -205,7 +215,7 @@ int cddatSearchFileName(const char *name)
 
 char *GetFileName(int file_no)
 {
-    if (p_cd_dat->name_tbl == 0)
+    if (!ValidFileNumber(file_no) || p_cd_dat->name_tbl == 0)
     {
         return (char *)"error";
     }
@@ -224,7 +234,7 @@ char *GetFileName(int file_no)
 
 void GetFileNameBuffer(int file_no, char *buf)
 {
-    if (p_cd_dat->name_tbl == 0)
+    if (!ValidFileNumber(file_no) || p_cd_dat->name_tbl == 0)
     {
         strcpy(buf, "error");
         return;

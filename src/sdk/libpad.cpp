@@ -10,6 +10,7 @@
 
 #include "libpad.h"
 
+#include "../main/gphase.h"
 #include "../reipan/io/reipan_input.h"
 #include "../reipan/io/reipan_menu_mouse.h"
 
@@ -60,12 +61,18 @@ struct AutoPadPress
     unsigned read;
     unsigned hold;
     int      button;                // < REIPAN_PAD_LOGICAL_COUNT: button, else stick push
+    int      phase;
+    unsigned visit;
 };
 
 static AutoPadPress s_autopad[AUTOPAD_MAX];
 static int          s_autopad_count;
 static int          s_autopad_on = -1;      // -1: not read yet, 0: off, 1: scripted
 static unsigned     s_autopad_reads;
+static bool         s_autopad_has_phase;
+static int          s_autopad_phase = -1;
+static unsigned     s_autopad_phase_reads;
+static unsigned     s_autopad_visits[GPHASE_NUM];
 
 static int AutoPadActive(void)
 {
@@ -93,6 +100,22 @@ static int AutoPadActive(void)
             continue;
         }
         *colon = '\0';
+        unsigned phase, visit, read;
+        int phase_id = -1;
+        char trailing;
+        // Optionally count reads from an initialized phase's Nth visit.
+        if (std::sscanf(tok, "%u/%u/%u%c", &phase, &visit, &read, &trailing) == 3)
+        {
+            if (phase >= GPHASE_NUM || visit == 0 || read == 0)
+                continue;
+            phase_id = (int)phase;
+            s_autopad_has_phase = true;
+        }
+        else
+        {
+            read = (unsigned)std::strtoul(tok, nullptr, 10);
+            visit = 0;
+        }
         unsigned hold = AUTOPAD_HOLD;
         char *star = std::strchr(colon + 1, '*');
         if (star != nullptr)
@@ -106,9 +129,7 @@ static int AutoPadActive(void)
                                                             : s_autopad_stick_names[i - REIPAN_PAD_LOGICAL_COUNT];
             if (std::strcmp(colon + 1, name) == 0)
             {
-                s_autopad[s_autopad_count].read   = (unsigned)std::strtoul(tok, nullptr, 10);
-                s_autopad[s_autopad_count].hold   = hold;
-                s_autopad[s_autopad_count].button = i;
+                s_autopad[s_autopad_count] = {read, hold, i, phase_id, visit};
                 s_autopad_count++;
                 break;
             }
@@ -122,13 +143,39 @@ static int AutoPadHeld(int button)
 {
     for (int i = 0; i < s_autopad_count; i++)
     {
-        if (s_autopad[i].button == button && s_autopad_reads >= s_autopad[i].read
-            && s_autopad_reads < s_autopad[i].read + s_autopad[i].hold)
+        const AutoPadPress &press = s_autopad[i];
+        if (press.button != button)
+            continue;
+        unsigned read = s_autopad_reads;
+        if (press.phase >= 0)
+        {
+            if (s_autopad_phase != press.phase || s_autopad_visits[press.phase] != press.visit)
+                continue;
+            read = s_autopad_phase_reads;
+        }
+        if (read >= press.read && read - press.read < press.hold)
         {
             return 1;
         }
     }
     return 0;
+}
+
+static void AutoPadAdvance()
+{
+    s_autopad_reads++;
+    if (!s_autopad_has_phase)
+        return;
+    const GPHASE_NODE *leaf = GetGPhaseCtrl()->leaf;
+    const int phase = leaf != nullptr && leaf->state == GPHASE_STATE_RUN ? leaf->id : -1;
+    if (phase != s_autopad_phase)
+    {
+        s_autopad_phase = phase;
+        s_autopad_phase_reads = 0;
+        if (phase >= 0 && phase < GPHASE_NUM)
+            s_autopad_visits[phase]++;
+    }
+    s_autopad_phase_reads++;
 }
 
 static void PackPressureBytes(u_char *report, u_short buttons, bool scripted)
@@ -221,7 +268,7 @@ int scePadRead(int port, int slot, unsigned char *rdata)
 
     if (AutoPadActive())
     {
-        s_autopad_reads++;
+        AutoPadAdvance();
         for (i = 0; i < REIPAN_PAD_LOGICAL_COUNT; i++)
         {
             if (AutoPadHeld(i) || ReiPan_MenuMouseHeld(i))

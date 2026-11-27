@@ -69,7 +69,8 @@ static_assert(offsetof(CMP_HEADER, div_p) == 0x14, "CMP_HEADER.div_p");
 /* from_adrs / to_adrs are plain `int` in the ROM -- EE pointers are 4 bytes.
  * They carry addresses, so they have to widen on the host. */
 void CMP_DecodeOne(CMP_HEADER *header, int no, uintptr_t from_adrs, uintptr_t to_adrs);  // FF3 0x00271b08
-int  CMP_Decode(CMP_HEADER *header, void *decode_buf);                                  // FF3 0x00271b60
+int  CMP_Decode(const CMP_HEADER *header, size_t stored_size, void *decode_buf,
+                size_t output_size);                                                  // FF3 0x00271b60
 void CMP_Init(CMP_HEADER *header);                                                      // FF3 0x00271c00
 
 #endif /* _SYSTEM_ENCODES_CMP_H */

@@ -21,7 +21,7 @@ int PhfCheck(const void *pack)
 
     if (pack != nullptr)
     {
-        ret = strcmp((const char *)pack, "phf") == 0;   /* rodata 0x36b8a0 */
+        ret = memcmp(pack, "phf", 4) == 0;
     }
     return ret;
 }

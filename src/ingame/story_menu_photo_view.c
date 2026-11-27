@@ -14,7 +14,6 @@
 #include "ingame/story_menu_photo_view.h"
 
 #include "common/cmn_fade_layer.h"      // GetCmnFadeLayer
-#include "common/heapctrl.h"            // heapCtrlMalloc, heapCtrlFree
 #include "graphics/graph2d/message.h"   // GetMsgDataAddr, PrintMsg_ArrangeOneLine, SetCurColorRGB
 #include "graphics/motion/anicode.h"    // MsgView*, MenuWdwSetMsg, B2D_HOOK_REC, B2dSetHookList, SetDefaultGsDrawState
 #include "ingame/ingame.h"              // GPhaseCtrlRequest
@@ -28,7 +27,6 @@
 #include "system/b2d/B2dSpr.h"          // B2dSprSetDisp
 #include "system/b2d/BpCtl.h"           // BpCtl*, BpPlayLabel
 #include "system/eeiop/cd_file_dat.h"   // FILE_ETURAN_PHOTO_PHF
-#include "system/os/sys_heap.h"         // GetSystemHeapWrkP
 #include "system/pad/pad_ctrl.h"        // pad_key, CheckPadTrgPlaySe, CheckPadRptPlaySe
 #include "ingame/menu/menu_mouse.h"    // PC: the mouse in menus
 
@@ -39,7 +37,6 @@
 #define VIEW_SE_PAGE    0x1a9b0005
 
 static int       photo_detail_anim;     // sbss gp-0x314: the message view's layout slot
-static int      *photo_detail_pics;     // sbss gp-0x310: the document's picture files (system heap)
 static MENU_PIC *photo_map_pic;         // sdata 0x370434 (gp-0x30bc)
 
 static short PhotoDetailMain(void);
@@ -48,7 +45,6 @@ static void  PhotoDetailOpen(void);
 static void  PhotoDetailClose(void);
 static int   PhotoDetailIsOpen(void);
 static void  PhotoDetailSetDoc(void);
-static void  PhotoDetailFreePics(void);
 static void  PhotoDetailBackToText(void);
 static void  PhotoDetailUpdate(void);
 static void  PhotoMapUpdate(void);
@@ -134,7 +130,6 @@ static void PhotoDetailMove(int dir)
     u_int se  = VIEW_SE_BUZZER;
 
     if (index != DocCsrSetIndex(tab, index + dir)) {
-        PhotoDetailFreePics();
         PhotoDetailSetDoc();
         PhotoDetailBackToText();
         se = VIEW_SE_PAGE;
@@ -148,7 +143,6 @@ static void PhotoDetailMove(int dir)
 static void PhotoDetailOpen(void)
 {
     photo_detail_anim = LayoutAnimStart(0, 0);
-    photo_detail_pics = nullptr;
     PhotoDetailSetDoc();
 }
 
@@ -156,7 +150,7 @@ static void PhotoDetailOpen(void)
 static void PhotoDetailClose(void)
 {
     LayoutAnimReset(photo_detail_anim);
-    PhotoDetailFreePics();
+    MsgViewSetPics(nullptr, 0);
 }
 
 // FF3 0x001b2708
@@ -173,35 +167,22 @@ static int PhotoDetailIsOpen(void)
 static void PhotoDetailSetDoc(void)
 {
     short key = DocMenuGetCurDoc();
-    short num = msg_pic_key_dat[key].pic_num;
-    short pic;
-    int   i;
-
-    if (num < 1) {
-        photo_detail_pics = nullptr;
-        num = 0;
-    } else {
-        pic = msg_pic_key_dat[key].pic;
-        photo_detail_pics = (int *)heapCtrlMalloc(GetSystemHeapWrkP(), num * sizeof(int), 0, 0, 0);
-        for (i = 0; i < num; i++)
-            photo_detail_pics[i] = pic + i;
-    }
-    MsgViewSetMsg(DocGetMsgType(key, 0), msg_pic_key_dat[key].msg1);
-    MsgViewSetMode(0);
-    MsgViewSetPics(photo_detail_pics, num);
-    DocFlagSetRead(key);
-}
-
-// ──────────────────────────────────────────────────────────────────────
-// FF3 0x001b2828
-
-static void PhotoDetailFreePics(void)
-{
-    if (photo_detail_pics != nullptr) {
-        heapCtrlFree(GetSystemHeapWrkP(), photo_detail_pics, 0, 0, 0);
-        photo_detail_pics = nullptr;
+    if ((u_short)key >= MSG_PIC_KEY_NUM)
+    {
+        MsgViewSetMsg(-1, -1);
         MsgViewSetPics(nullptr, 0);
+        return;
     }
+    const MSG_PIC_KEY_DAT &doc = msg_pic_key_dat[key];
+    int pics[MSG_VIEW_PIC_MAX];
+    const int count = (u_short)doc.pic_num <= MSG_VIEW_PIC_MAX ? doc.pic_num : 0;
+    for (int i = 0; i < count; i++)
+        pics[i] = doc.pic + i;
+
+    MsgViewSetMsg(DocGetMsgType(key, 0), doc.msg1);
+    MsgViewSetMode(0);
+    MsgViewSetPics(pics, count);
+    DocFlagSetRead(key);
 }
 
 // FF3 0x001b2880
@@ -344,7 +325,7 @@ static int PhotoMapPicHook(const B2D_HOOK_ARGS *args)
     short      key = DocMenuGetCurDoc();
     MENU_PIC  *pic;
 
-    if (key != -1) {
+    if (key != -1 && photo_map_pic != nullptr) {
         photo_map_pic->pic = msg_pic_key_dat[key].menu_pic + 2;
         photo_map_pic->Step();
         photo_map_pic->v     = 0;

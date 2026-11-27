@@ -184,8 +184,12 @@ ReiPan_Config reipan_config = {
         /* .trigger_strength  = */ 1.0f,
         /* .camera            = */ 0,
     },
+#ifdef REIPAN_SLPS_25544_CHS
+    /* .overlay_menu_bar = */ 0,
+#else
     /* Up on a first run, so the settings are there to be found. */
     /* .overlay_menu_bar = */ 1,
+#endif
 };
 
 namespace
@@ -927,6 +931,10 @@ const char *const kInputButtonNames[REIPAN_PAD_BUTTON_COUNT] = {
     "up",    "down", "left", "right", "triangle", "cross",  "square", "circle",
     "l1",    "l2",   "r1",   "r2",    "start",    "select", "l3",     "r3"
 };
+#ifdef REIPAN_SLPS_25544_CHS
+constexpr int kSquareBinding = 6;
+constexpr int kLeftStickClickBinding = 14;
+#endif
 
 const char *const kInputStickNames[REIPAN_PAD_STICK_COUNT] = {
     "leftx", "lefty", "rightx", "righty"
@@ -1052,8 +1060,21 @@ void LoadInputBindings()
         ReiPan_InputSetPreferredGamepad(pad);
     }
 
+#ifdef REIPAN_SLPS_25544_CHS
+    const char *square = Lookup("input", kInputButtonNames[kSquareBinding]);
+    const char *left_click = Lookup("input", kInputButtonNames[kLeftStickClickBinding]);
+    const bool use_new_defaults =
+        Lookup("input", "keyboard_layout_version") == nullptr &&
+        square != nullptr && std::strcmp(square, "key:Q, pad:x") == 0 &&
+        left_click != nullptr && std::strcmp(left_click, "key:Left Shift, pad:leftstick") == 0;
+#endif
+
     for (int i = 0; i < REIPAN_PAD_BUTTON_COUNT; i++)
     {
+#ifdef REIPAN_SLPS_25544_CHS
+        if (use_new_defaults && (i == kSquareBinding || i == kLeftStickClickBinding))
+            continue;
+#endif
         const char *value = Lookup("input", kInputButtonNames[i]);
         if (value == nullptr || value[0] == '\0')
         {
@@ -1142,6 +1163,9 @@ std::string BuildInputSection()
 {
     std::string out =
         "[input]\n"
+#ifdef REIPAN_SLPS_25544_CHS
+        "keyboard_layout_version = 1\n"
+#endif
         "; Rebindable controls.  Each line lists every source that can press\n"
         ";   one PS2 button -- any of them will do, up to four, separated by\n"
         ";   commas.  These 16 buttons are what the whole game reads through,\n"
@@ -1399,7 +1423,9 @@ static void ConfigLoadOnce(void)
 
     ReadInt("profiler", "summary", &reipan_config.profiler_summary);
     ReadInt("profiler", "fps_only", &reipan_config.profiler_fps_only);
+#ifndef REIPAN_SLPS_25544_CHS
     ReadInt("overlay", "menu_bar", &reipan_config.overlay_menu_bar);
+#endif
 
     ReiPan_ConfigCamera *cam = &reipan_config.camera;
     ReadInt("over_shoulder_camera", "enabled", &cam->over_shoulder);
@@ -1684,7 +1710,11 @@ int ReiPan_ConfigSave(void)
     const std::string camera_section = BuildCameraSection() + BuildMouseSection() +
         BuildGyroSection() + BuildRumbleSection() +
         "\n[overlay]\n"
+#ifdef REIPAN_SLPS_25544_CHS
+        "; F1 changes the debug menu for the current session.\n"
+#else
         "; The menu bar F1 shows and hides, as it was left.\n"
+#endif
         "menu_bar = " + std::to_string(reipan_config.overlay_menu_bar != 0 ? 1 : 0) +
         "\n";
     const std::string title_section = TitleText();

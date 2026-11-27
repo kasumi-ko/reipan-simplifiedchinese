@@ -18,6 +18,7 @@
 #include "main/gphase.h"
 
 #include <stdio.h>                  // printf (PC: unwritten-phase report)
+#include <stdlib.h>
 
 #include "main/main.h"              // phase 0: *_super
 #include "album/prg/album_edit.h"  // phases 8, 24..26, 52, 54, 78
@@ -497,7 +498,11 @@ static int GPhaseCallInit(short id)
     {
         return GPhaseCallMissing(GPHASE_INIT, id);      // PC: unwritten phase
     }
-    return ini_func[id]();
+    const int result = ini_func[id]();
+    static const bool trace = getenv("REIPAN_TRACE_PHASES") != nullptr;
+    if (result != 0 && trace)
+        printf("[phase] entered %d from %d\n", id, GetGPhaseCtrl()->from);
+    return result;
 }
 
 // ──────────────────────────────────────────────────────────────────────

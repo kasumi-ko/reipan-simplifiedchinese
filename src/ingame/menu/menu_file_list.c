@@ -386,7 +386,7 @@ static short MenuFileListPad(void)
         to = focus + 1;
         if (to >= 2)
         {
-            if (memo_wrk[memo].status != 0)
+            if ((u_short)memo < MEMO_NUM && memo_wrk[memo].status != 0)
             {
                 SndSePlay(MENU_FILE_SE_TURN, 100, 0x1000, 0, nullptr, 0);
                 return MENU_FILE_DETAIL_PHASE;
@@ -875,6 +875,8 @@ static s_char MenuFileListGetPageNum(short tab, short row)
 {
     short memo = MenuFileListGetMemo(tab, row);
 
+    if ((u_short)memo >= MEMO_NUM)
+        return 0;
     return MemoGetPageBreakNum(memo, memo_wrk[memo].page);
 }
 
@@ -1165,7 +1167,7 @@ static int MenuFileTitleTexIsReady(void)
 // the memo's page row is -1.
 static inline int MenuFileTitleStrip(short memo)
 {
-    short page = (short)(memo_wrk[memo].page + memo_dat[memo].page_top);
+    short page = MemoGetCurrentPageIndex(memo);
 
     if (page == -1)
         return -1;

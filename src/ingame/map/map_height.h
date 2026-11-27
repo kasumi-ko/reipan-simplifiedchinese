@@ -76,6 +76,7 @@ static_assert(offsetof(MhCtrl, v_idx) == 0x2c, "MhCtrl.v_idx");
 static_assert(offsetof(MhCtrl, V) == 0x30, "MhCtrl.V");
 
 void MhFirstInit(void);                     // FF3 0x001fd9b0: both room buffers empty (IngameInit)
+void MhClearRoom(int room);
 int  MhInitMapHeight(void *dat, float *ofs, int room);  // FF3 0x001fd9c0: room's height data from dat (its offsets made absolute), moved by ofs; 1, 0
 int  MhSetOffset2(int room, float *ofs);    // FF3 0x001fdf80: moves room's height data by ofs (MapLoadSetOffSet); 1
 

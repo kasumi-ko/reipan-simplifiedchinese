@@ -147,6 +147,30 @@ SND_STREAM_ERR SndStreamStartHeaderOnMemory(int wrk_id, int file_no, HXD_HEADER 
 // FF3 0x0026b898
 SND_STREAM_ERR SndStreamStart(int wrk_id, int file_no, int header_file_no, int offset, int loop)
 {
+#ifdef REIPAN_SLPS_25544_CHS
+    // JP event scripts refer to 340 contiguous .str/.hxd pairs with even
+    // stream IDs. The corresponding host IDs are odd and 127 higher.
+    if (file_no >= 0x0e94 && file_no <= 0x113a &&
+        (file_no & 1) == 0 && (header_file_no == file_no + 1 || header_file_no == -0x21))
+    {
+        file_no += 127;
+        if (header_file_no != -0x21)
+            header_file_no += 127;
+    }
+#endif
+    if (wrk_id < 0 || wrk_id >= (int)(sizeof(snd_stream_wrk) / sizeof(snd_stream_wrk[0])))
+        return SND_STREAM_ERR_NOT_USE;
+    if (file_no < 0 || file_no >= GetFileNum() || GetFileSize(file_no) == (u_int)-1 ||
+        GetFileExtLabel(file_no) != 37)
+        return SND_STREAM_ERR_HEADER;
+    const u_int header_size = GetFileSize(header_file_no);
+    if (header_file_no != -0x21 &&
+        (GetFileExtLabel(header_file_no) != 6 || header_size < sizeof(HXD_HEADER) ||
+         header_size > sizeof(header_buf_64[0])))
+    {
+        printf("ReiPan: rejected stream header %04x for file %04x\n", header_file_no, file_no);
+        return SND_STREAM_ERR_HEADER;
+    }
     SND_STREAM_WRK *wrk = &snd_stream_wrk[wrk_id];
     SND_STREAM_ERR  ret;
 
@@ -168,8 +192,15 @@ SND_STREAM_ERR SndStreamStart(int wrk_id, int file_no, int header_file_no, int o
     }
     else
     {
+        wrk->header_size = header_size;
+        memset(wrk->header_buf, 0, header_size);
         wrk->header_id = FileLoadReqEE(header_file_no, wrk->header_buf,
                                        snd_stream_load_priority, nullptr, nullptr);
+        if (wrk->header_id < 0)
+        {
+            wrk->status = ST_STREAM_NO_USE;
+            return SND_STREAM_ERR_HEADER;
+        }
     }
 
     return SND_STREAM_OK;
@@ -296,6 +327,17 @@ void SndStreamMain(void)
                     // FF2's SetStreamHeaderSub, inlined: the HXD header, then its
                     // SOUND_INFO records.
                     HXD_HEADER *header = (HXD_HEADER *)wrk->header_buf;
+
+                    if (header->name != 0x48584400 || header->num < 1 || header->num > 2 ||
+                        header->interleave_byte <= 0 || header->interleave_byte > 0x8000 ||
+                        header->interleave_byte % 16 != 0 ||
+                        sizeof(HXD_HEADER) + (unsigned)header->num * sizeof(SOUND_INFO) > wrk->header_size)
+                    {
+                        printf("ReiPan: invalid HXD data for stream %04x\n", wrk->file_no);
+                        wrk->header_id = -1;
+                        wrk->status = ST_STREAM_NO_USE;
+                        break;
+                    }
 
                     wrk->s.nchannel        = (short)header->num;
                     wrk->s.interleave_byte = header->interleave_byte;

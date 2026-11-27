@@ -943,8 +943,7 @@ static int FilmRoomHook(const B2D_HOOK_ARGS *args)
     return 0;
 }
 
-// Item 0x43a: the date, dd / mm / yy hh : mm : ss, the fields 3 characters
-// apart.
+// Item 0x43a: the date and time, with the date fields 3 characters apart.
 // FF3 0x00230408
 
 static int FilmDateHook(const B2D_HOOK_ARGS *args)
@@ -968,11 +967,17 @@ static int FilmDateHook(const B2D_HOOK_ARGS *args)
         }
         y = (short)rect[1];
         x = (short)rect[0];
-        PrintNumber_N(date[2], 2, x,          y, MSG_COL_CURRENT, (u_char)alpha, 0, 1, 1);     // day
-        MsgPrintPageMain(0x82, 6, x + w * 2,  y, MSG_COL_CURRENT, alpha, 0, 0, 0, 0);         // "/"
+#ifdef REIPAN_SLPS_25544_CHS
+        // SLPS_255.44 0x229eb0: yy/mm/dd, with "/" from group 0x81.
+        constexpr int first = 0, last = 2, separator_group = 0x81;
+#else
+        constexpr int first = 2, last = 0, separator_group = 0x82;
+#endif
+        PrintNumber_N(date[first], 2, x,       y, MSG_COL_CURRENT, (u_char)alpha, 0, 1, 1);
+        MsgPrintPageMain(separator_group, 6, x + w * 2, y, MSG_COL_CURRENT, alpha, 0, 0, 0, 0);
         PrintNumber_N(date[1], 2, x + w * 3,  y, MSG_COL_CURRENT, (u_char)alpha, 0, 1, 1);     // month
-        MsgPrintPageMain(0x82, 6, x + w * 5,  y, MSG_COL_CURRENT, alpha, 0, 0, 0, 0);
-        PrintNumber_N(date[0], 2, x + w * 6,  y, MSG_COL_CURRENT, (u_char)alpha, 0, 1, 1);     // year
+        MsgPrintPageMain(separator_group, 6, x + w * 5, y, MSG_COL_CURRENT, alpha, 0, 0, 0, 0);
+        PrintNumber_N(date[last], 2, x + w * 6, y, MSG_COL_CURRENT, (u_char)alpha, 0, 1, 1);
         PrintNumber_N(date[3], 2, x + w * 9,  y, MSG_COL_CURRENT, (u_char)alpha, 0, 1, 1);     // hour
         MsgPrintPageMain(0x67, 3, x + w * 11, y, MSG_COL_CURRENT, alpha, 0, 0, 0, 0);         // ":"
         PrintNumber_N(date[4], 2, x + w * 12, y, MSG_COL_CURRENT, (u_char)alpha, 0, 1, 1);     // minute

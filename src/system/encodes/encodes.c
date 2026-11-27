@@ -208,9 +208,10 @@ int SlideEncode(u_char *base, u_char *addrs, int max_size)
 // FF3 0x00271638; from MioPan encodes.c (unchanged). Like FF2, FF3 loads each
 // input byte before it tests `rest` (a hoisted load, the byte unused); the port
 // tests first so it never reads past the host buffer.
-void SlideDecode(u_char *base, u_char *addrs, int size)
+int SlideDecode(const u_char *base, u_char *addrs, int size, int capacity)
 {
-    u_char textbuf[N + F - 1];
+    u_char textbuf[N + F - 1] = {};
+    u_char *const start = addrs;
     int    i;
     int    j;
     int    k;
@@ -219,10 +220,9 @@ void SlideDecode(u_char *base, u_char *addrs, int size)
     u_short flags;
     u_int   rest;
 
+    if (size < 0 || capacity < 0)
+        return -1;
     rest = (u_int)size;
-
-    for (i = 0; i < N - F; i++)
-        textbuf[i] = 0;
 
     r = N - F;
     flags = 0;
@@ -233,7 +233,7 @@ void SlideDecode(u_char *base, u_char *addrs, int size)
          * count fall out of the shift reaching bit 8. */
         if (((flags >>= 1) & 0x100) == 0)
         {
-            if (rest == 0) return;
+            if (rest == 0) return (int)(addrs - start);
 
             c = *base++;
             rest--;
@@ -243,7 +243,8 @@ void SlideDecode(u_char *base, u_char *addrs, int size)
         if ((flags & 1) != 0)
         {
             /* One literal byte. */
-            if (rest == 0) return;
+            if (rest == 0) return (int)(addrs - start);
+            if (addrs - start >= capacity) return -1;
 
             c = *base++;
             rest--;
@@ -257,18 +258,19 @@ void SlideDecode(u_char *base, u_char *addrs, int size)
             /* A (position, length) pair.  Note the copy reads through the
              * window as it writes, so an overlapping match repeats -- which is
              * how a run of one byte is encoded. */
-            if (rest == 0) return;
+            if (rest == 0) return (int)(addrs - start);
 
             i = *base++;
             rest--;
 
-            if (rest == 0) return;
+            if (rest == 0) return -1;
 
             j = *base++;
             rest--;
 
             i |= (j & 0xf0) << 4;
             j = (j & 0x0f) + THRESHOLD;
+            if (j + 1 > capacity - (addrs - start)) return -1;
 
             for (k = 0; k <= j; k++)
             {

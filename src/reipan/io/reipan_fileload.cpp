@@ -66,7 +66,7 @@ static int ReadNamed(const char *file_name, int offset, void *target,
 
 static int ReadArchive(int start_sector, void *target, unsigned int request_size)
 {
-    if (target == (void *)0)
+    if (target == (void *)0 || start_sector < 0)
     {
         return 0;
     }
@@ -74,65 +74,11 @@ static int ReadArchive(int start_sector, void *target, unsigned int request_size
     return sceCdReadFile("\\IMG_BD.BIN;1", (u_int)start_sector * 0x800u, target, request_size);
 }
 
-static int DecodeBuffer(void *cmp_buffer, void *target, unsigned int output_size)
+static int DecodeBuffer(const void *cmp_buffer, unsigned int stored_size,
+                        void *target, unsigned int output_size)
 {
-    CMP_HEADER *header;
-    int         decoded_size;
-
-    if (cmp_buffer == (void *)0 || target == (void *)0)
-    {
-        return 0;
-    }
-
-    header = (CMP_HEADER *)cmp_buffer;
-    if (header->div_num <= 0 || header->div_size <= 0 || header->data_offset <= 0)
-    {
-        return 0;
-    }
-    if (header->size < 0 || (unsigned int)header->size > output_size)
-    {
-        return 0;
-    }
-
-    CMP_Init(header);
-
-    // CMP_Decode advances the output pointer by a full div_size for every one
-    // of div_num blocks, so it writes div_num*div_size bytes — header->size
-    // rounded up to a whole block, not to 16 like GetFileSize().  When the
-    // file's tail block is short the final store runs past target's end (target
-    // is only output_size bytes), corrupting the neighbouring heap chunk and
-    // faulting the next free().  If the block footprint doesn't fit, decode
-    // into a scratch buffer of the true footprint and copy back output_size.
-    {
-        size_t footprint = (size_t)header->div_num * (size_t)header->div_size;
-
-        if (footprint <= output_size)
-        {
-            decoded_size = CMP_Decode(header, target);
-        }
-        else
-        {
-            void *scratch = malloc(footprint);
-            if (scratch == (void *)0)
-            {
-                return 0;
-            }
-
-            decoded_size = CMP_Decode(header, scratch);
-            if (decoded_size >= 0)
-            {
-                unsigned int copy_size = output_size;
-                if ((unsigned int)decoded_size < copy_size)
-                {
-                    copy_size = (unsigned int)decoded_size;
-                }
-                memcpy(target, scratch, copy_size);
-            }
-
-            free(scratch);
-        }
-    }
-
+    const int decoded_size = CMP_Decode((const CMP_HEADER *)cmp_buffer, stored_size,
+                                       target, output_size);
     if (decoded_size < 0)
     {
         return 0;
@@ -166,7 +112,7 @@ static int DecodeNamed(const char *file_name, int offset, void *target,
     ret = 0;
     if (ReadNamed(file_name, 0, cmp_buffer, request_size) != 0)
     {
-        ret = DecodeBuffer(cmp_buffer, target, output_size);
+        ret = DecodeBuffer(cmp_buffer, request_size, target, output_size);
     }
 
     free(cmp_buffer);
@@ -193,7 +139,7 @@ static int DecodeArchive(int start_sector, void *target,
     ret = 0;
     if (ReadArchive(start_sector, cmp_buffer, request_size) != 0)
     {
-        ret = DecodeBuffer(cmp_buffer, target, output_size);
+        ret = DecodeBuffer(cmp_buffer, request_size, target, output_size);
     }
 
     free(cmp_buffer);

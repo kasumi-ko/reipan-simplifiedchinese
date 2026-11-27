@@ -53,7 +53,11 @@ static const ReiPan_InputButtonBinding
         /*  3 RIGHT    */ { { KEY(SDL_SCANCODE_RIGHT),  PAD(SDL_GAMEPAD_BUTTON_DPAD_RIGHT),      NOSRC, NOSRC } },
         /*  4 TRIANGLE */ { { KEY(SDL_SCANCODE_E),      PAD(SDL_GAMEPAD_BUTTON_NORTH),           NOSRC, NOSRC } },
         /*  5 CROSS    */ { { KEY(SDL_SCANCODE_SPACE),  PAD(SDL_GAMEPAD_BUTTON_SOUTH),           NOSRC, NOSRC } },
+#ifdef REIPAN_SLPS_25544_CHS
+        /*  6 SQUARE   */ { { KEY(SDL_SCANCODE_LSHIFT), PAD(SDL_GAMEPAD_BUTTON_WEST),            NOSRC, NOSRC } },
+#else
         /*  6 SQUARE   */ { { KEY(SDL_SCANCODE_Q),      PAD(SDL_GAMEPAD_BUTTON_WEST),            NOSRC, NOSRC } },
+#endif
         /*  7 CIRCLE   */ { { KEY(SDL_SCANCODE_C),      PAD(SDL_GAMEPAD_BUTTON_EAST),            NOSRC, NOSRC } },
         /*  8 L1       */ { { KEY(SDL_SCANCODE_R),      PAD(SDL_GAMEPAD_BUTTON_LEFT_SHOULDER),   NOSRC, NOSRC } },
         /*  9 L2       */ { { KEY(SDL_SCANCODE_Z),      AXIS(SDL_GAMEPAD_AXIS_LEFT_TRIGGER,  1), NOSRC, NOSRC } },
@@ -61,7 +65,11 @@ static const ReiPan_InputButtonBinding
         /* 11 R2       */ { { KEY(SDL_SCANCODE_X),      AXIS(SDL_GAMEPAD_AXIS_RIGHT_TRIGGER, 1), NOSRC, NOSRC } },
         /* 12 START    */ { { KEY(SDL_SCANCODE_ESCAPE), PAD(SDL_GAMEPAD_BUTTON_START),           NOSRC, NOSRC } },
         /* 13 SELECT   */ { { KEY(SDL_SCANCODE_TAB),    PAD(SDL_GAMEPAD_BUTTON_BACK),            NOSRC, NOSRC } },
+#ifdef REIPAN_SLPS_25544_CHS
+        /* 14 L3       */ { { NOSRC,                    PAD(SDL_GAMEPAD_BUTTON_LEFT_STICK),      NOSRC, NOSRC } },
+#else
         /* 14 L3       */ { { KEY(SDL_SCANCODE_LSHIFT), PAD(SDL_GAMEPAD_BUTTON_LEFT_STICK),      NOSRC, NOSRC } },
+#endif
         /* 15 R3       */ { { KEY(SDL_SCANCODE_V),      PAD(SDL_GAMEPAD_BUTTON_RIGHT_STICK),     NOSRC, NOSRC } },
     };
 
@@ -101,6 +109,8 @@ static int s_suppressed;
 // What the ImGui overlay is taking this frame.
 static int s_ui_wants_mouse;
 static int s_ui_wants_keyboard;
+static bool s_key_pending[SDL_SCANCODE_COUNT];
+static bool s_key_sample[SDL_SCANCODE_COUNT];
 
 // Buttons that were down when the last suppression ended, one bit per logical
 // button: each reads as released until it is let go, so the press that closed
@@ -129,10 +139,9 @@ static void EnsureBindings(void)
 
 static int KeyDown(const bool *keys, int scancode)
 {
-    return keys != 0 &&
-           scancode > 0 &&
+    return scancode > 0 &&
            scancode < SDL_SCANCODE_COUNT &&
-           keys[scancode] != 0;
+           (s_key_sample[scancode] || (keys != nullptr && keys[scancode]));
 }
 
 // One source projected into 0..REIPAN_SRC_FULL.  Digital sources answer either
@@ -467,11 +476,26 @@ void ReiPan_InputUpdate(void)
         return;
     }
     ReiPan_HostPumpEvents();    /* the main thread pumps when the game has its own */
+    memcpy(s_key_sample, s_key_pending, sizeof(s_key_sample));
+    memset(s_key_pending, 0, sizeof(s_key_pending));
     SelectGamepad();
     ReiPan_MenuMousePoll();
     ReiPan_GameMousePoll();     /* after the menus: they have the mouse first */
     ReiPan_GyroPoll();
     AdvanceStickRamps();
+}
+
+void ReiPan_InputQueueKeyDown(int scancode)
+{
+    if (scancode > 0 && scancode < SDL_SCANCODE_COUNT && ReiPan_InputMenuKeysFree())
+        s_key_pending[scancode] = true;
+}
+
+void ReiPan_InputClearKeyboard(void)
+{
+    memset(s_key_pending, 0, sizeof(s_key_pending));
+    memset(s_key_sample, 0, sizeof(s_key_sample));
+    memset(s_stick_ramp, 0, sizeof(s_stick_ramp));
 }
 
 int ReiPan_InputGetGamepadCount(void)
@@ -723,7 +747,7 @@ static void ApplySuppression(void)
     // suppression does not hand the game a stick that is still pushed over.
     if (s_suppressed != 0)
     {
-        memset(s_stick_ramp, 0, sizeof(s_stick_ramp));
+        ReiPan_InputClearKeyboard();
         return;
     }
 

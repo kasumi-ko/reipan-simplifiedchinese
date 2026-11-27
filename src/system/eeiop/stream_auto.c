@@ -47,7 +47,13 @@ static void StreamAutoStartSub(int wrk_id, int header_file_no, int loop)
 {
     STREAM_QUEUE *play_q = &stream_play_queue[wrk_id];
 
-    SndStreamStart(wrk_id, play_q->file_no, header_file_no, play_q->offset, loop);
+    const SND_STREAM_ERR result = SndStreamStart(wrk_id, play_q->file_no, header_file_no, play_q->offset, loop);
+    if (result != SND_STREAM_OK)
+    {
+        play_q->use = 0;
+        play_q->end = 1;
+        return;
+    }
     play_q->end     = 0;
     play_q->playing = 0;
 }

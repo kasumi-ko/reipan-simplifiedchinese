@@ -255,6 +255,11 @@ static void AutoLoadMcCheckWait(void)
             auto_load_ctrl.msg_id = AL_MSG_NO_ROOM;
             return;
         }
+#ifdef REIPAN_SLPS_25544_CHS
+        // The host's empty virtual card is the normal first launch.
+        auto_load_ctrl.step = AL_STEP_END;
+        return;
+#endif
         // fall through
     case -2:                                // unformatted
         auto_load_ctrl.mc_step = AL_STEP_ERROR_INIT;

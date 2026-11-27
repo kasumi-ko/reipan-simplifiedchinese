@@ -1,4 +1,5 @@
 #include "reipan_ui_saves.h"
+#include "reipan_ui_locale.h"
 #include "system/mc/prg/mc.h"
 #include "reipan/save/reipan_save_paths.h"
 #include "reipan/save/reipan_save_transfer.h"
@@ -15,6 +16,8 @@ namespace ReiPanUiSaves
 {
 namespace
 {
+using ReiPanUiLocale::UiText;
+
 namespace fs = std::filesystem;
 using namespace ReiPanSave;
 bool show = false, exporting = false, initialized = false, pending = false,
@@ -273,7 +276,7 @@ std::string Unavailable(bool require_selection = true,
 {
     if (pending)
     {
-        return "Transferring saves...";
+        return UiText("Transferring saves...");
     }
     if (path_dirty)
     {
@@ -539,16 +542,16 @@ void DestinationChoice(int i)
     char label[64];
     std::snprintf(label, sizeof(label), "Destination##%d", i);
     std::string preview = destination[i] < 0
-                              ? "Choose slot"
-                              : ("Slot " + std::to_string(destination[i] + 1));
+                              ? UiText("Choose slot")
+                              : (UiText("Slot ") + std::to_string(destination[i] + 1));
     ImGui::SetNextItemWidth(145);
     if (ImGui::BeginCombo(label, preview.c_str()))
     {
         for (int slot = 0; slot < 5; ++slot)
         {
             const bool occupied = target.save.slots[slot].occupied;
-            const std::string text = "Slot " + std::to_string(slot + 1)
-                                     + (occupied ? " (replace)" : " (empty)");
+            const std::string text = UiText("Slot ") + std::to_string(slot + 1)
+                                     + (occupied ? UiText(" (replace)") : UiText(" (empty)"));
             if (ImGui::Selectable(text.c_str(), destination[i] == slot))
             {
                 destination[i] = slot;
@@ -636,9 +639,9 @@ void Rows(bool is_source)
             }
             if (clicked)
             {
-                ImGui::OpenPopup("Save issue");
+                ImGui::OpenPopup(UiText("Save issue"));
             }
-            if (ImGui::BeginPopup("Save issue"))
+            if (ImGui::BeginPopup(UiText("Save issue")))
             {
                 ImGui::PushTextWrapPos(ImGui::GetFontSize() * 28);
                 ImGui::TextUnformatted(detail.c_str());
@@ -657,9 +660,9 @@ void Rows(bool is_source)
         ReiPanUiSavePreview::Draw(preview, ImVec2(116, 58));
         ImGui::SameLine();
         ImGui::BeginGroup();
-        if (preview.description == "Unavailable save")
+        if (preview.description == UiText("Unavailable save"))
         {
-            ImGui::TextDisabled("Unavailable save");
+            ImGui::TextDisabled(UiText("Unavailable save"));
         }
         else if (preview.occupied)
         {
@@ -670,7 +673,7 @@ void Rows(bool is_source)
         }
         else
         {
-            ImGui::TextDisabled("Empty slot");
+            ImGui::TextDisabled(UiText("Empty slot"));
         }
         ImGui::EndGroup();
         ImGui::SetCursorPosY(row_top + 66);
@@ -685,12 +688,12 @@ void Rows(bool is_source)
             ImGui::TextColored(slot.occupied ? ImVec4(1, .7f, .3f, 1)
                                              : ImVec4(.5f, .9f, .6f, 1),
                                "%s <- source %d",
-                               slot.occupied ? "Replace" : "Add", incoming + 1);
+                               slot.occupied ? UiText("Replace") : UiText("Add"), incoming + 1);
         }
         else
         {
-            ImGui::TextDisabled("%s", slot.occupied ? "Keep existing save"
-                                                    : "Empty slot");
+            ImGui::TextDisabled("%s", slot.occupied ? UiText("Keep existing save")
+                                                    : UiText("Empty slot"));
         }
         if (is_source && slot.occupied && slot.issue.empty() && source_ok && ImGui::IsWindowHovered()
             && ImGui::IsMouseClicked(ImGuiMouseButton_Left)
@@ -726,7 +729,7 @@ bool IsOpen()
 }
 void MenuItem()
 {
-    if (ImGui::MenuItem("PS2 save transfer..."))
+    if (ImGui::MenuItem(UiText("PS2 save transfer...")))
     {
         show = true;
         step = Step::Operation;
@@ -815,14 +818,14 @@ void Draw(SDL_Window* window)
         ImVec2(std::min(1080.f, viewport->WorkSize.x * .96f),
                std::min(800.f, viewport->WorkSize.y * .94f)),
         ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("PS2 save transfer", &show))
+    if (!ImGui::Begin(UiText("PS2 save transfer"), &show))
     {
         ImGui::End();
         return;
     }
-    const char* titles[] = {"Choose direction", "Choose PS2 storage",
-                            "Select saves and slots", "Choose PS2 region",
-                            "Choose output format"};
+    const char* titles[] = {UiText("Choose direction"), UiText("Choose PS2 storage"),
+                            UiText("Select saves and slots"), UiText("Choose PS2 region"),
+                            UiText("Choose output format")};
     const int page = step == Step::Operation ? 1
                      : exporting             ? int(step)
                                              : int(step) + 1;
@@ -852,7 +855,7 @@ void Draw(SDL_Window* window)
     }
     if (step == Step::Operation)
     {
-        ImGui::TextUnformatted("Where would you like to send your saves?");
+        ImGui::TextUnformatted(UiText("Where would you like to send your saves?"));
         ImGui::Spacing();
         const float available = ImGui::GetContentRegionAvail().x;
         const bool side_by_side = available >= 650.f;
@@ -877,7 +880,7 @@ void Draw(SDL_Window* window)
     }
     else if (step == Step::Location)
     {
-        ImGui::TextUnformatted("Choose where your PS2 saves are stored");
+        ImGui::TextUnformatted(UiText("Choose where your PS2 saves are stored"));
         ImGui::Spacing();
         const float width = ImGui::GetContentRegionAvail().x;
         if (ChoiceCard("Open a card or save archive\n\nPCSX2 / OPL card or "
@@ -903,7 +906,7 @@ void Draw(SDL_Window* window)
             if (source.save.region == SaveRegion::EU)
             {
                 ImGui::SetNextItemWidth(260.f);
-                if (ImGui::Combo("Source timing", &source_clock, "Automatic (stock PAL)\0 50 Hz PAL\0 60 Hz / older port exports\0")) Refresh();
+                if (ImGui::Combo(UiText("Source timing"), &source_clock, "Automatic (stock PAL)\0 50 Hz PAL\0 60 Hz / older port exports\0")) Refresh();
             }
             const auto notes = RegionNotice(source.save.region, SaveRegion::EU);
             if (!notes.empty())
@@ -920,7 +923,7 @@ void Draw(SDL_Window* window)
                                                 }));
         ImGui::Text("%d of %d saves selected", count, available);
         ImGui::SameLine();
-        if (ImGui::SmallButton("Select all"))
+        if (ImGui::SmallButton(UiText("Select all")))
         {
             for (int i = 0; i < 5; ++i)
             {
@@ -930,7 +933,7 @@ void Draw(SDL_Window* window)
             AssignEmptySlots();
         }
         ImGui::SameLine();
-        if (ImGui::SmallButton("Clear selection"))
+        if (ImGui::SmallButton(UiText("Clear selection")))
         {
             ClearSelection();
         }
@@ -939,11 +942,11 @@ void Draw(SDL_Window* window)
                                   | ImGuiTableFlags_BordersInnerV))
         {
             ImGui::TableNextColumn();
-            ImGui::TextUnformatted(exporting ? "Source: PC saves"
-                                             : "Source: PS2 saves");
+            ImGui::TextUnformatted(exporting ? UiText("Source: PC saves")
+                                             : UiText("Source: PS2 saves"));
             ImGui::TableNextColumn();
-            ImGui::TextUnformatted(exporting ? "Destination: PS2 saves"
-                                             : "Destination: PC saves");
+            ImGui::TextUnformatted(exporting ? UiText("Destination: PS2 saves")
+                                             : UiText("Destination: PC saves"));
             ImGui::TableNextRow();
             const float height =
                 std::max(120.f, ImGui::GetContentRegionAvail().y);
@@ -960,9 +963,9 @@ void Draw(SDL_Window* window)
     }
     else if (step == Step::Region)
     {
-        ImGui::TextUnformatted("Choose the original game's region");
+        ImGui::TextUnformatted(UiText("Choose the original game's region"));
         ImGui::TextWrapped(
-            "The output will use that release's save data and filenames.");
+            UiText("The output will use that release's save data and filenames."));
         ImGui::Spacing();
         const float width = ImGui::GetContentRegionAvail().x;
         for (auto region : {SaveRegion::JP, SaveRegion::US, SaveRegion::EU})
@@ -999,7 +1002,7 @@ void Draw(SDL_Window* window)
         if (output_region == SaveRegion::EU)
         {
             ImGui::SetNextItemWidth(220.f);
-            ImGui::Combo("Target timing", &output_clock, "50 Hz PAL\0 60 Hz\0");
+            ImGui::Combo(UiText("Target timing"), &output_clock, "50 Hz PAL\0 60 Hz\0");
         }
         const auto notes = RegionNotice(SaveRegion::EU, output_region);
         if (!notes.empty())
@@ -1120,7 +1123,7 @@ void Draw(SDL_Window* window)
         reason = Unavailable(true, false, final_step || step == Step::Format);
     }
     ImGui::BeginDisabled(step == Step::Operation);
-    if (ImGui::Button("Back", ImVec2(120, 0)))
+    if (ImGui::Button(UiText("Back"), ImVec2(120, 0)))
     {
         step = exporting && step == Step::Slots ? Step::Operation
                                                 : Step(int(step) - 1);
@@ -1136,7 +1139,7 @@ void Draw(SDL_Window* window)
         const std::string action =
             final_step ? (exporting ? "Export " : "Import ")
                              + std::to_string(slots.size()) + " save(s)"
-                       : "Next";
+                       : UiText("Next");
         ImGui::BeginDisabled(!reason.empty());
         if (ImGui::Button(action.c_str(), ImVec2(180, 0)))
         {
@@ -1160,16 +1163,16 @@ void Draw(SDL_Window* window)
         }
     }
     ImGui::EndDisabled();
-    if (!message.empty() && !ImGui::IsPopupOpen("Save transfer message"))
+    if (!message.empty() && !ImGui::IsPopupOpen(UiText("Save transfer message")))
     {
-        ImGui::OpenPopup("Save transfer message");
+        ImGui::OpenPopup(UiText("Save transfer message"));
     }
     ImGui::SetNextWindowSize(ImVec2(std::min(480.f, viewport->WorkSize.x * .9f), 0),
                              ImGuiCond_Appearing);
-    if (ImGui::BeginPopupModal("Save transfer message", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    if (ImGui::BeginPopupModal(UiText("Save transfer message"), nullptr, ImGuiWindowFlags_AlwaysAutoResize))
     {
         ImGui::TextWrapped("%s", message.c_str());
-        if (ImGui::Button("OK", ImVec2(120, 0)) || ImGui::IsKeyPressed(ImGuiKey_Escape))
+        if (ImGui::Button(UiText("OK"), ImVec2(120, 0)) || ImGui::IsKeyPressed(ImGuiKey_Escape))
         {
             message.clear();
             ImGui::CloseCurrentPopup();

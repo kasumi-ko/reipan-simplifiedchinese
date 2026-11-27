@@ -80,7 +80,7 @@ static int   DocMenuSetTab(int tab);
 static void  DocMenuNextTab(int dir);
 static void  DocCsrInit(int tab);
 static void  DocCsrRelease(int tab);
-static int   DocCsrUpdate(int tab);
+static int   DocCsrUpdate(int tab, bool &clicked);
 static int   DocCsrPage(int tab, int prev);
 static short DocCsrGetPosY(int tab);
 static short DocCsrGetTopY(int tab);
@@ -318,7 +318,7 @@ void DocFlagEnd(void)
 
 int DocFlagSet(short key)
 {
-    if (doc_flag[key] == DOC_FLAG_NONE) {
+    if ((u_short)key < MSG_PIC_KEY_NUM && doc_flag[key] == DOC_FLAG_NONE) {
         doc_flag[key] = DOC_FLAG_NEW;
         return 1;
     }
@@ -330,7 +330,7 @@ int DocFlagSet(short key)
 
 int DocFlagClear(short key)
 {
-    if (doc_flag[key] != DOC_FLAG_NONE) {
+    if ((u_short)key < MSG_PIC_KEY_NUM && doc_flag[key] != DOC_FLAG_NONE) {
         doc_flag[key] = DOC_FLAG_NONE;
         return 1;
     }
@@ -342,7 +342,7 @@ int DocFlagClear(short key)
 
 int DocFlagSetRead(short key)
 {
-    if (doc_flag[key] != DOC_FLAG_NONE) {
+    if ((u_short)key < MSG_PIC_KEY_NUM && doc_flag[key] != DOC_FLAG_NONE) {
         doc_flag[key] = DOC_FLAG_READ;
         return 1;
     }
@@ -391,6 +391,8 @@ int DocGetMsgType(short key, int part)
 {
     (void)part;
 
+    if ((u_short)key >= MSG_PIC_KEY_NUM)
+        return 0;
     switch (msg_pic_key_dat[key].kind) {
     case DOC_KIND_SIRYOU:
         return 0x1d;
@@ -434,7 +436,8 @@ void DOC_LIST::Build()
 
     if (n != 0) {
         list = (short *)heapCtrlMalloc(GetSystemHeapWrkP(), n * sizeof(short), 0, 0, 0);
-        num  = Fill(1);
+        if (list != nullptr)
+            num = Fill(1);
     }
 }
 
@@ -634,9 +637,9 @@ void DocMenuUpdate(void)
 static short DocMenuMain(void)
 {
     int tab   = DocMenuGetTab();
-    int index = DocCsrGetIndex(tab);
     int prev;
     short num;
+    bool clicked = false;
 
     switch (DocMenuGetStep()) {
     case DOC_STEP_IN:
@@ -664,7 +667,7 @@ static short DocMenuMain(void)
                     MenuMouseTab(tab, i, &box, REIPAN_MENU_LEFT, REIPAN_MENU_RIGHT);
             }
         }
-        if (DocCsrUpdate(tab) != 0)
+        if (DocCsrUpdate(tab, clicked) != 0)
             return -1;
         if (num > DOC_VIEW_ROWS) {
             if (CheckPadRptPlaySe(pad_key[PAD_KEY_PAGE_PREV], -1, 0)) {
@@ -684,9 +687,9 @@ static short DocMenuMain(void)
         } else if (CheckPadRptPlaySe(pad_key[PAD_KEY_TAB_NEXT] | 0x2000, -1, 0)) {
             DocMenuSetTab(tab + 1);
             prev = 0;
-        } else if (CheckPadTrgPlaySe(pad_key[PAD_KEY_OK], -1, 0)) {
+        } else if (clicked || CheckPadTrgPlaySe(pad_key[PAD_KEY_OK], -1, 0)) {
             // A document without text pages cannot be opened (maps have none).
-            if (tab != DOC_KIND_MAP && DocListGetPageNum(tab, index) < 1) {
+            if (tab != DOC_KIND_MAP && DocListGetPageNum(tab, (short)DocCsrGetIndex(tab)) < 1) {
                 SndSePlay(DOC_SE_BUZZER, 100, 0x1000, 0, 0, 0);
                 return -1;
             }
@@ -857,11 +860,35 @@ static void DocCsrRelease(int tab)
 // ──────────────────────────────────────────────────────────────────────
 // FF3 0x001b15a0: 1 when the cursor moved (its SE played).
 
-static int DocCsrUpdate(int tab)
+static int DocCsrUpdate(int tab, bool &clicked)
 {
     MENU_CSR_WRK *wrk = &doc_csr[tab];
+    const int handle = DocMenuHandle();
+    const short top = DocCsrGetTopY(tab);
+    const short num = DocListGetNum(tab);
+    ReiPan_MenuBox left_edge, right_edge;
 
-    MenuMouseCsrGrid(wrk, doc_csl, DocMenuHandle());            // PC
+    ReiPan_MenuMouseBegin(0, nullptr);
+    // The row dividers stay put while the selected cursor sprite moves.
+    if (ReiPan_MenuMouseItemBox(handle, 0x42a, &left_edge) &&
+        ReiPan_MenuMouseItemBox(handle, 0x432, &right_edge))
+    {
+        ReiPan_MenuBox box = {left_edge.x, left_edge.y,
+                              right_edge.x + right_edge.w - left_edge.x, DOC_ROW_DY};
+        for (short row = 0; row < DOC_VIEW_ROWS && top + row < num; row++, box.y += DOC_ROW_DY)
+        {
+            const short index = (short)(top + row);
+            if (ReiPan_MenuMouseClick(box.x, box.y, box.w, box.h))
+            {
+                MenuCsrObjSetPos(wrk, index, 0, row, -1, -1);
+                clicked = true;
+                return 0;
+            }
+            if (MenuMouseCsrWork(wrk, index, &box))
+                break;
+        }
+    }
+
     MenuCsrObjUpdate(wrk, 0);
     return MenuCsrObjIsMovedSe(wrk, DOC_SE_MOVE);
 }
@@ -967,7 +994,7 @@ static short DocListGet(int tab, short i)
 {
     DOC_LIST *list = doc_list[tab];
 
-    if (i < 0 || i >= list->num)
+    if (list == nullptr || i < 0 || i >= list->num)
         return -1;
     return list->list[i];
 }
@@ -977,13 +1004,15 @@ static short DocListGet(int tab, short i)
 
 short DocListGetPic(int tab, short i)
 {
-    return msg_pic_key_dat[DocListGet(tab, i)].pic;
+    const short key = DocListGet(tab, i);
+    return key < 0 ? -1 : msg_pic_key_dat[key].pic;
 }
 
 // FF3 0x001b1970
 short DocListGetPicNum(int tab, short i)
 {
-    return msg_pic_key_dat[DocListGet(tab, i)].pic_num;
+    const short key = DocListGet(tab, i);
+    return key < 0 ? 0 : msg_pic_key_dat[key].pic_num;
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -993,6 +1022,8 @@ short DocListGetPicNum(int tab, short i)
 static short DocListGetPageNum(int tab, short i)
 {
     short key  = DocListGet(tab, i);
+    if (key < 0)
+        return 0;
     short msg1 = msg_pic_key_dat[key].msg1;
 
     return (short)MsgGetPageBreakNum(DocGetMsgType(key, 2), (short)(msg1 + 2));
@@ -1019,13 +1050,11 @@ static int DocPicHook(const B2D_HOOK_ARGS *args)
     float scale;
     MENU_PIC *pic;
 
-    if (key != -1) {
+    if (key != -1 && doc_pic != nullptr) {
         scale = (float)(int)args->stack[2] * (1.0f / 128.0f);  /* sdata 0x3703d8 */
-        if (doc_pic != nullptr) {
-            doc_pic->pic = msg_pic_key_dat[key].menu_pic;
-            doc_pic->Step();
-            doc_pic->scale = scale;
-        }
+        doc_pic->pic = msg_pic_key_dat[key].menu_pic;
+        doc_pic->Step();
+        doc_pic->scale = scale;
         pic = doc_pic;
         pic->Draw();
         pic->DrawNext();

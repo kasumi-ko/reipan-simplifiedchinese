@@ -1,4 +1,5 @@
 #include "reipan_rml_gamefiles.h"
+#include "reipan_ui_locale.h"
 
 #include "reipan_rml_common.h"
 #include "reipan_rmlui.h"
@@ -22,6 +23,8 @@
 
 namespace
 {
+using ReiPanUiLocale::UiText;
+
 constexpr const char *kDocumentPath = "resources/rml/gamefiles.rml";
 
 /* How long "found" stays up before the fade, and the fade itself, which is
@@ -136,11 +139,19 @@ const char *ProblemText(int result)
         return "That copy is cut short: the game's files run past the end of it. "
                "Copy or dump the disc again.";
     case REIPAN_GAMEFILE_OTHER_RELEASE:
+#ifdef REIPAN_SLPS_25544_CHS
+        return "请选择简体中文版适配目录中的 IMG_BD.BIN。";
+#else
         return "That is not a copy of Fatal Frame III that ReiPan can read. Only "
                "the European version works: Project Zero 3, SLES-53825.";
+#endif
     case REIPAN_GAMEFILE_NO_TABLE:
+#ifdef REIPAN_SLPS_25544_CHS
+        return "该目录缺少适配后的 ZERO3.FHD。";
+#else
         return "IMG_BD.BIN needs ZERO3.FHD in the same folder. Copy that from "
                "your disc too, then choose IMG_BD.BIN again.";
+#endif
     case REIPAN_GAMEFILE_UNREADABLE:
     default:
         return "That file could not be read. Check that it is still there and "
@@ -154,8 +165,8 @@ void OpenDialog()
      * "All files" too: dumps are not always named .iso, and a disc copied file
      * by file can leave IMG_BD.BIN;1. */
     static const SDL_DialogFileFilter kFilters[] = {
-        {"Game files (*.iso, IMG_BD.BIN)", "iso;bin"},
-        {"All files", "*"},
+        {UiText("Game files (*.iso, IMG_BD.BIN)"), "iso;bin"},
+        {UiText("All files"), "*"},
     };
     if (g_pick.open.exchange(true))
     {
@@ -210,7 +221,7 @@ void TakePick()
     g_screen.stage = Stage::Found;
     g_screen.found_at = SDL_GetTicks();
     g_screen.frame->SetClass("found", true);
-    ShowStatus("found", "Found it. Starting the game...", BaseName(path));
+    ShowStatus("found", UiText("Found it. Starting the game..."), BaseName(path));
 }
 
 void Select(int action)
@@ -320,8 +331,8 @@ void Listener::ProcessEvent(Rml::Event &event)
 void RefreshPrompts()
 {
     static const ReiPanRmlCommon::Prompt kPrompts[] = {
-        {"Enter", SDL_GAMEPAD_BUTTON_SOUTH, "Select", nullptr},
-        {"Esc", SDL_GAMEPAD_BUTTON_NORTH, "Back", "prompt-back"},
+        {"Enter", SDL_GAMEPAD_BUTTON_SOUTH, UiText("Select"), nullptr},
+        {"Esc", SDL_GAMEPAD_BUTTON_NORTH, UiText("Back"), "prompt-back"},
     };
     const std::string prompts = g_screen.stage == Stage::Asking && !g_pick.open.load()
                                     ? ReiPanRmlCommon::PromptsRml(kPrompts, 2)
@@ -336,7 +347,7 @@ void RefreshPrompts()
 void RefreshChoosing()
 {
     const bool choosing = g_pick.open.load();
-    const std::string label = choosing ? "Choosing..." : "Choose Game File";
+    const std::string label = choosing ? UiText("Choosing...") : UiText("Choose Game File");
     if (label != g_screen.shown_choose)
     {
         g_screen.shown_choose = label;
@@ -353,7 +364,7 @@ bool Open()
         return false;
     }
 
-    Rml::ElementDocument *document = context->LoadDocument(kDocumentPath);
+    Rml::ElementDocument *document = ReiPanRml::LoadDocument(context, kDocumentPath);
     if (document == nullptr)
     {
         SDL_Log("ReiPan RmlUi: could not load %s", kDocumentPath);
@@ -391,7 +402,7 @@ bool Open()
      * reads as if the player had never chosen. */
     if (reipan_config.paths.data_folder[0] != '\0')
     {
-        ShowStatus("", "The game is no longer where the settings say it was:",
+        ShowStatus("", UiText("The game is no longer where the settings say it was:"),
                    reipan_config.paths.data_folder);
     }
     return true;

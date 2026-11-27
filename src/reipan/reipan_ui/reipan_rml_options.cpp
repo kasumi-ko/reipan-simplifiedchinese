@@ -1945,7 +1945,7 @@ bool Init(Rml::Context *context)
     {
         return false;
     }
-    g_opt.document = context->LoadDocument(kDocumentPath);
+    g_opt.document = ReiPanRml::LoadDocument(context, kDocumentPath);
     if (g_opt.document == nullptr)
     {
         SDL_Log("ReiPan RmlUi: could not load %s", kDocumentPath);

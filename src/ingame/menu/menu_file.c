@@ -192,9 +192,7 @@ static void MenuFileDetailSetRead(void)
 
 short MenuFileGetMemoPage(void)
 {
-    short memo = MenuFileGetMemo();
-
-    return (short)(memo_wrk[memo].page + memo_dat[memo].page_top);
+    return MemoGetCurrentPageIndex(MenuFileGetMemo());
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -205,16 +203,12 @@ short MenuFileGetMemoPage(void)
 
 static int MenuFileDetailPicHook(const B2D_HOOK_ARGS *args)
 {
-    short memo;
     short row;
     int   pic;
 
     if (file_detail_pic == nullptr)
         return 0;
-    memo = MenuFileGetMemo();
-    if (memo == -1)
-        return 0;
-    row = (short)(memo_wrk[memo].page + memo_dat[memo].page_top);
+    row = MenuFileGetMemoPage();
     if (row == -1)
         return 0;
 
@@ -274,15 +268,11 @@ static int MenuFileDetailTextHook(const B2D_HOOK_ARGS *args)
 {
     const int *rect = (const int *)args->t1;
     u_int      rgb  = (u_int)args->t3;
-    short      memo;
     short      row;
     short      text;
     short      page;
 
-    memo = MenuFileGetMemo();
-    if (memo == -1)
-        return 0;
-    row = (short)(memo_wrk[memo].page + memo_dat[memo].page_top);
+    row = MenuFileGetMemoPage();
     if (row == -1)
         return 0;
 
@@ -401,7 +391,11 @@ static int MenuFileDetailPageNoHook(const B2D_HOOK_ARGS *args)
     pos[1] = rect[1];
     B2dHookPrintNumber(MenuFilePageCsrGetPos() + 1, 1, 1, pos, rgb, alpha, flags);
     pos[0] = rect[0] + w;
+#ifdef REIPAN_SLPS_25544_CHS
+    B2dHookPrintMsgLine(0x81, 6, 0, pos, rgb, alpha, flags);    // SLPS_255.44 0x202918
+#else
     B2dHookPrintMsgLine(0x82, 6, 0, pos, rgb, alpha, flags);
+#endif
     num = MenuFileGetPageNum();
     pos[0] = rect[0] + w * 2;
     B2dHookPrintNumber(num > 0 ? num : 1, 1, 1, pos, rgb, alpha, flags);

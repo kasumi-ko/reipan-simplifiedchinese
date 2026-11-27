@@ -195,8 +195,6 @@ int MsgGetPicKey(int msg0, int msg1)
 // The message viewer
 // ══════════════════════════════════════════════════════════════════════
 
-#define MSG_VIEW_PIC_MAX    8
-
 // The viewer's work (data 0x2f62e8, 0x38 bytes, zero in the ROM).
 struct MSG_VIEW
 {
@@ -218,6 +216,7 @@ static_assert(offsetof(MSG_VIEW, mode) == 0x34, "MSG_VIEW.mode");
 static MSG_VIEW      msg_view;                  /* data 0x2f62e8 */
 static MENU_PIC *msg_view_map;              /* sdata gp-0x5a80: the picture state's pictures */
 static CTutorial      *msg_view_pic;              /* sdata gp-0x5a7c: the text state's message picture */
+static bool msg_view_alternate_layout;
 
 static int MsgViewSelectPic(int no, int force);
 static void MsgViewPicFirst(void);
@@ -264,7 +263,7 @@ void MsgViewSetMsg(int msg0, int msg1)
 void MsgViewSetPics(const int *pics, int n)
 {
     MsgViewPicReset();
-    if (pics == nullptr)
+    if (pics == nullptr || n <= 0 || n > MSG_VIEW_PIC_MAX)
     {
         msg_view.pic_num = 0;
     }
@@ -318,6 +317,11 @@ static int MsgViewDrawTitle(const B2D_HOOK_ARGS *args)
 // (0x82, 6) and the numbers sit around x + 0x18. FF3 0x0014d498.
 static int MsgViewDrawPageNum(const B2D_HOOK_ARGS *args)
 {
+#ifdef REIPAN_SLPS_25544_CHS
+    // SLPS_255.44's hook at 0x0014d470 draws nothing. Its group 0x82
+    // contains memory-card prompts, including the port's separator ID.
+    (void)args;
+#else
     const int *xy    = (const int *)args->t1;
     int        alpha = (int)args->stack[2];
     int        x     = xy[0];
@@ -333,6 +337,7 @@ static int MsgViewDrawPageNum(const B2D_HOOK_ARGS *args)
     PrintNumber(pages, x + 0x18 + MsgGetLineWidth(GetMsgDataAddr(0x82, 6), nullptr), y, 0x2d,
                 alpha & 0xff, 0, 1);
     SetDefaultGsDrawState();
+#endif
     return 0;
 }
 
@@ -440,6 +445,13 @@ static void MsgViewPicFirst(void)
         GetCmnFadeLayer()->Switch(label, 0x1e);
 }
 
+static bool MsgViewMouseArrowClicked(int handle, int item)
+{
+    ReiPan_MenuBox box;
+    return ReiPan_MenuMouseItemBox(handle, item, &box) &&
+           ReiPan_MenuMouseClick(box.x, box.y, box.w, box.h);
+}
+
 // ──────────────────────────────────────────────────────────────────────
 // The text state: page with OK/right/left, R1/L1 back to the first
 // picture, button 0x20 to the picture state, close with cancel (or OK on
@@ -449,6 +461,10 @@ static int MsgViewUpdateText(int handle)
 {
     int wait = MsgIsPageWait();
     int se;
+    int page;
+    int page_count;
+    bool clicked_prev;
+    bool clicked_next;
 
     if (wait == 0)
     {
@@ -459,13 +475,19 @@ static int MsgViewUpdateText(int handle)
     if (wait != 1)
         return 0;
 
-    // PC: the mouse. A click is OK, the wheel turns the page.
+    // The page arrows take their own clicks before the page handles a click as OK.
+    page = MsgGetPage();
+    page_count = MsgGetPageBreakNum(msg_view.msg0, msg_view.msg1 + 2);
     ReiPan_MenuMouseBegin(REIPAN_MM_WHEEL_HORIZONTAL, nullptr);
+    clicked_prev = msg_view.mode != MSG_VIEW_MODE_1 && page > 0 &&
+        MsgViewMouseArrowClicked(handle, msg_view_alternate_layout ? 0x40a : 0x3fc);
+    clicked_next = msg_view.mode != MSG_VIEW_MODE_1 && page + 1 < page_count &&
+        MsgViewMouseArrowClicked(handle, msg_view_alternate_layout ? 0x3f1 : 0x3fa);
     ReiPan_MenuMouseConfirm();
 
     if (CheckPadTrgPlaySe(pad_key[PAD_KEY_OK], -1, 0))
     {
-        if (MsgGetPage() + 1 < MsgGetPageBreakNum(msg_view.msg0, msg_view.msg1 + 2))
+        if (page + 1 < page_count)
             goto next_page;
         if (msg_view.mode == MSG_VIEW_MODE_1 || msg_view.mode == MSG_VIEW_MODE_2)
         {
@@ -475,20 +497,20 @@ static int MsgViewUpdateText(int handle)
         goto buzzer;
     }
 
-    if (CheckPadTrgPlaySe(0x2000, -1, 0))                       // right
+    if (clicked_next || CheckPadTrgPlaySe(0x2000, -1, 0))       // right
     {
         if (msg_view.mode != MSG_VIEW_MODE_0 && msg_view.mode != MSG_VIEW_MODE_2)
             goto buzzer;
-        if (MsgGetPage() + 1 < MsgGetPageBreakNum(msg_view.msg0, msg_view.msg1 + 2))
+        if (page + 1 < page_count)
             goto next_page;
         goto buzzer;
     }
 
-    if (CheckPadTrgPlaySe(0x8000, -1, 0))                       // left
+    if (clicked_prev || CheckPadTrgPlaySe(0x8000, -1, 0))       // left
     {
         if (msg_view.mode != MSG_VIEW_MODE_0 && msg_view.mode != MSG_VIEW_MODE_2)
             goto buzzer;
-        if (MsgGetPage() <= 0)
+        if (page <= 0)
             goto buzzer;
         SndSePlay(0x1a9b0005, 100, 0x1000, 0, 0, 0);
         MsgPagePrev();
@@ -559,17 +581,20 @@ static int MsgViewUpdatePic(int handle)
 {
     int no;
 
-    // PC: the mouse. A click is OK, the wheel turns the picture.
     ReiPan_MenuMouseBegin(REIPAN_MM_WHEEL_HORIZONTAL, nullptr);
+    const bool clicked_prev = msg_view.pic_num > 1 &&
+        MsgViewMouseArrowClicked(handle, msg_view_alternate_layout ? 0x40f : 0x3f5);
+    const bool clicked_next = msg_view.pic_num > 1 &&
+        MsgViewMouseArrowClicked(handle, msg_view_alternate_layout ? 0x40d : 0x3ed);
     ReiPan_MenuMouseConfirm();
 
-    if (CheckPadTrgPlaySe(pad_key[PAD_KEY_OK] | 0x2000, -1, 0))
+    if (clicked_next || CheckPadTrgPlaySe(pad_key[PAD_KEY_OK] | 0x2000, -1, 0))
     {
         no = msg_view.pic_cur + 1;
         if (no >= msg_view.pic_num)
             no = 0;
     }
-    else if (CheckPadTrgPlaySe(0x8000, -1, 0))
+    else if (clicked_prev || CheckPadTrgPlaySe(0x8000, -1, 0))
     {
         no = msg_view.pic_cur - 1;
         if (no < 0)
@@ -693,6 +718,7 @@ static const B2D_HOOK_REC msg_view_hooks_1[] =
 // Type 0 on_open. FF3 0x0014e210.
 int MsgViewOnOpen(int handle)
 {
+    msg_view_alternate_layout = false;
     B2dSetHookList(handle, msg_view_hooks_0);
     if (msg_view.mode == MSG_VIEW_MODE_2)
         GetCmnFadeLayer()->Show(MsgViewGetFadeLabel());
@@ -708,6 +734,7 @@ int MsgViewOnOpen(int handle)
 // MsgViewOnOpen).
 int FUN_0014e2f8(int handle)
 {
+    msg_view_alternate_layout = true;
     B2dSetHookList(handle, msg_view_hooks_1);
     if (msg_view.mode != MSG_VIEW_MODE_2)
     {
@@ -1172,7 +1199,12 @@ static void YesNoDrawChoice(const B2D_HOOK_ARGS *args, int msg1, int no)
         SetCurColorPacked((u_int)args->t3);
     else
         SetCurColorRGB(0xd6, 0xf4, 0xab);
+#ifdef REIPAN_SLPS_25544_CHS
+    // SLPS_255.44 uses the left anchor stored in its yes/no layout.
+    MsgPrintAt(1, msg1, xy[0], xy[1], alpha, 0, 0, 0, 0);
+#else
     MsgPrintAt(1, msg1, (xy[0] + xy[4]) / 2, xy[1], alpha, 0, 0, 0, 2);
+#endif
     SetDefaultGsDrawState();
 }
 
@@ -1374,7 +1406,7 @@ static int MenuWdwDrawMsg(const B2D_HOOK_ARGS *args)
 
 // ──────────────────────────────────────────────────────────────────────
 // A choice: message (1, 1) "yes", or (1, 2) "no" for the items whose name
-// starts with 'n', centred between xy[0] and xy[4].
+// starts with 'n'.
 static void MenuWdwDrawChoice(const B2D_HOOK_ARGS *args)
 {
     const int *xy    = (const int *)args->t1;
@@ -1382,7 +1414,11 @@ static void MenuWdwDrawChoice(const B2D_HOOK_ARGS *args)
     int        msg1  = B2dGetDrawItem()->name[0] == 'n' ? 2 : 1;
 
     SetCurColorPacked((u_int)args->t3);
+#ifdef REIPAN_SLPS_25544_CHS
+    MsgPrintPage(1, msg1, xy[0], xy[1], 0x2d, alpha, 0, 0, 0, 0);
+#else
     MsgPrintPage(1, msg1, (xy[0] + xy[4]) / 2, xy[1], 0x2d, alpha, 0, 0, 0, 2);
+#endif
     SetDefaultGsDrawState();
 }
 
@@ -1788,6 +1824,7 @@ static_assert(offsetof(SLOT_SEL, num) == 0x44, "SLOT_SEL.num");
 static_assert(offsetof(SLOT_SEL, close_req) == 0x48, "SLOT_SEL.close_req");
 
 static SLOT_SEL slot_sel;                       /* bss 0x391938 */
+static int slot_sel_handle = -1;
 
 // The choice items and their texts (data 0x350f48), up to id -1.
 static const PAUSE_MENU_CHOICE slot_sel_choice[] =
@@ -1797,11 +1834,23 @@ static const PAUSE_MENU_CHOICE slot_sel_choice[] =
     {    -1,   -1, -1 },
 };
 
+void SlotSelMouse(int sel)
+{
+    ReiPan_MenuMouseBegin(REIPAN_MM_WHEEL_VERTICAL, nullptr);
+    for (int i = 0; slot_sel_handle >= 0 && slot_sel_choice[i].id >= 0; i++)
+    {
+        ReiPan_MenuBox box;
+        if (ReiPan_MenuMouseItemBox(slot_sel_handle, slot_sel_choice[i].id, &box))
+            ReiPan_MenuMouseSeekBox(sel, i, &box, REIPAN_MENU_UP, REIPAN_MENU_DOWN, REIPAN_MENU_CROSS);
+    }
+}
+
 // ──────────────────────────────────────────────────────────────────────
 // FF3 0x0014ff58
 void SlotSelSetSel(int sel)
 {
-    slot_sel.sel = sel;
+    if (sel >= 0 && sel < slot_sel.num)
+        slot_sel.sel = sel;
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -1822,14 +1871,17 @@ void SlotSelReqClose(int req)
 // FF3 0x0014ff90
 static void SlotSelGetItemPos(int handle, const int *ids, int n)
 {
-    slot_sel.num = n;
+    slot_sel.num = 0;
     for (int i = 0; i < n; i++)
     {
         B2D_ITEM *item = B2dCtlFindItem(handle, ids[i]);
+        if (item == nullptr)
+            return;
 
         slot_sel.pos[i][0] = B2dSprGetPartData(item, B2D_PART_X);
         slot_sel.pos[i][1] = B2dSprGetPartData(item, B2D_PART_Y);
     }
+    slot_sel.num = n;
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -1838,6 +1890,8 @@ static void SlotSelGetItemPos(int handle, const int *ids, int n)
 static int SlotSelDrawCursor(const B2D_HOOK_ARGS *args)
 {
     (void)args;
+    if (slot_sel.num == 0)
+        return 0;
     B2dSprSetPos(B2dGetDrawItem(),
                  slot_sel.pos[slot_sel.sel][0] - slot_sel.pos[0][0],
                  slot_sel.pos[slot_sel.sel][1] - slot_sel.pos[0][1] + 10);
@@ -1853,16 +1907,19 @@ static int SlotSelDrawChoice(const B2D_HOOK_ARGS *args)
     const int *xy    = (const int *)args->t1;
     int        alpha = (int)args->stack[2];
     B2D_ITEM  *item  = B2dGetDrawItem();
-    int        type  = GetLabelSuffixType(item->name);
-    int        x     = LabelAlignGetX(type, xy);
-    int        i;
-
+    if (alpha == 0)
+        return 0;
+    int i;
     for (i = 0; slot_sel_choice[i].id >= 0; i++)
     {
         if (slot_sel_choice[i].id == item->id)
             break;
     }
+    if (slot_sel_choice[i].id < 0)
+        return 0;
 
+    int type = GetLabelSuffixType(item->name);
+    int x = LabelAlignGetX(type, xy);
     SetCurColorPacked(SlotSelIsSel(i) ? 0x97cdd380 : 0x47797480);
     MsgPrintAt(slot_sel_choice[i].msg0, slot_sel_choice[i].msg1, x, xy[1], alpha,
                item->part[B2D_PART_TEXT].value, 0, 0, type);
@@ -1892,6 +1949,7 @@ int FUN_00150190(int handle)
     slot_sel.sel       = 0;
     slot_sel.close_req = 0;
     SlotSelGetItemPos(handle, ids, 2);
+    slot_sel_handle = handle;
     return 0;                           // EE: v0 of the last call; nobody reads it
 }
 
@@ -1909,7 +1967,8 @@ int SlotSelOnUpdate(int handle)
 // Type 7 on_close. FF3 0x00150290 (no Ghidra function).
 int FUN_00150290(int handle)
 {
-    (void)handle;
+    if (slot_sel_handle == handle)
+        slot_sel_handle = -1;
     slot_sel.close_req = 0;
     return 1;
 }

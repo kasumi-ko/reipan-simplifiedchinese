@@ -17,7 +17,9 @@
 void FontTexLoadReq(void)
 {
     LoadReq(FONT_TEX_PK4, ReiPan_GetHostPointer(FONT_TEX_ADRS));
+#ifndef REIPAN_SLPS_25544_CHS
     LoadReq(FONT_EX_TEX_PK4, ReiPan_GetHostPointer(FONT_EX_TEX_ADRS));
+#endif
 }
 
 // FF3 0x001c7c68.
@@ -29,5 +31,9 @@ void FontTexSendVram(void)
 // FF3 0x001c7c90.
 void FontExTexSendVram(void)
 {
+#ifdef REIPAN_SLPS_25544_CHS
+    FontTexSendVram(); // The Chinese pack contains all ten pages.
+#else
     PK4SendVram(ReiPan_GetHostPointer(FONT_EX_TEX_ADRS), 0, -1, -1);
+#endif
 }

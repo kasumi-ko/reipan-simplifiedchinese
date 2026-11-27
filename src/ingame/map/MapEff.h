@@ -75,7 +75,7 @@ void  MapLightRegClear(void);           // FF3 0x001f59a8: IngameLoadRestore
 void  MapLightRegReset(void);           // FF3 0x001f59e0: IngameInit, IngameNewGameReset, MapReleaseAll
 
 // Load slots.
-void *MapLoadSlotReq(int file_no, int slot, void **addr);  // FF3 0x001f5a60: *addr = the address after the file, returns the old one
+void *MapLoadSlotReq(int file_no, int slot, void **addr);  // FF3 0x001f5a60: returns the file's load address, or null when it was not queued
 void  MapLoadHookNop(void);             // FF3 0x001f5ab0: empty (MapLoadRegistReq, MapLoadWaitMain)
 void  MapLoadSlotReset(void);           // FF3 0x001f5ab8: every slot -1
 void  MapLoadSlotCancelAll(void);       // FF3 0x001f5af0 (no callers)

@@ -79,7 +79,8 @@ enum MSG_VIEW_MODE
 
 void MsgViewSetMode(int mode);                  // MSG_VIEW_MODE_*
 void MsgViewSetMsg(int msg0, int msg1);         // also MsgPageReset
-void MsgViewSetPics(const int *pics, int n);    // n <= 8; pics nullptr: none
+#define MSG_VIEW_PIC_MAX 8
+void MsgViewSetPics(const int *pics, int n);    // copies n picture IDs; nullptr clears the list
 void MsgViewBackToText(int handle);             // FF3 0x0014deb8: from the pictures back to the text
 
 int  MsgViewOnOpen(int handle);                 // type 0 on_open
@@ -227,6 +228,7 @@ int PauseMenuOnClose(int handle);               // type 4 on_close
 // Two choices, messages (0x59, 9) / (0x59, 10) on items 0x3e9 / 0x3ed and a
 // cursor item 0x3ee; the owner moves the choice and requests the close.
 void SlotSelSetSel(int sel);
+void SlotSelMouse(int sel);
 int  SlotSelIsSel(int sel);
 void SlotSelReqClose(int req);                  // != 0: play "out" and close
 

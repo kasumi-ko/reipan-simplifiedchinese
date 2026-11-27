@@ -26,6 +26,7 @@
  * the game.
  */
 #include "reipan_ui_title.h"
+#include "reipan_ui_locale.h"
 
 #include "../reipan_config.h"
 
@@ -41,6 +42,8 @@
 
 namespace
 {
+using ReiPanUiLocale::UiText;
+
 
 constexpr short kPhaseTitleMode = 5;
 
@@ -162,14 +165,14 @@ void DrawBackdrop()
     ReiPan_ConfigTitle &t = reipan_config.title;
     int backdrop = t.backdrop;
 
-    ImGui::TextUnformatted("Backdrop");
+    ImGui::TextUnformatted(UiText("Backdrop"));
     ImGui::SameLine();
-    ImGui::RadioButton("Rooms from the game##backdrop_room", &backdrop,
+    ImGui::RadioButton(UiText("Rooms from the game##backdrop_room"), &backdrop,
                        REIPAN_TITLE_BACKDROP_ROOM);
     Tooltip("The scenes below, lit and animated as the game plays them,\n"
             "behind the original logo and menus.");
     ImGui::SameLine();
-    ImGui::RadioButton("The original background##backdrop_classic", &backdrop,
+    ImGui::RadioButton(UiText("The original background##backdrop_classic"), &backdrop,
                        REIPAN_TITLE_BACKDROP_CLASSIC);
     Tooltip("The original title, movie and picture of Rei and all -- exactly\n"
             "the original's, apart from the music choice below.");
@@ -236,18 +239,18 @@ void DrawSceneList()
     const bool full = t.scene_count >= REIPAN_TITLE_SCENE_MAX;
 
     ImGui::BeginDisabled(full);
-    if (ImGui::Button("New##scene_new"))
+    if (ImGui::Button(UiText("New##scene_new")))
     {
         ReiPan_ConfigTitleScene &s = t.scenes[t.scene_count];
         ReiPan_ConfigTitleSceneDefault(&s);
-        std::snprintf(s.name, sizeof(s.name), "Scene %d", t.scene_count + 1);
+        std::snprintf(s.name, sizeof(s.name), UiText("Scene %d"), t.scene_count + 1);
         t.scene_count++;
         Select(t.scene_count - 1);
     }
     Tooltip("A new scene in the opening room (RS106), placed by itself.  Pick\n"
             "its room and move its points from there.");
     ImGui::SameLine();
-    if (ImGui::Button("Duplicate##scene_dup"))
+    if (ImGui::Button(UiText("Duplicate##scene_dup")))
     {
         ReiPan_ConfigTitleScene copy = Selected();
         char name[REIPAN_TITLE_NAME_MAX];
@@ -261,7 +264,7 @@ void DrawSceneList()
     ImGui::SameLine();
 
     ImGui::BeginDisabled(t.scene_count <= 1);
-    if (ImGui::Button("Delete##scene_delete"))
+    if (ImGui::Button(UiText("Delete##scene_delete")))
     {
         const int gone = g_selected;
         for (int i = gone; i < t.scene_count - 1; i++)
@@ -291,7 +294,7 @@ void DrawSceneList()
 
     /* When the title moves on. */
     int change = t.change;
-    ImGui::TextUnformatted("Next scene");
+    ImGui::TextUnformatted(UiText("Next scene"));
     ImGui::SameLine();
     ImGui::RadioButton("after##change_pass", &change, REIPAN_TITLE_CHANGE_PASS);
     ImGui::SameLine();
@@ -307,17 +310,17 @@ void DrawSceneList()
     }
     ImGui::SameLine();
     ImGui::TextUnformatted(t.passes == 1 ? "pass of the path" : "passes of the path");
-    ImGui::Indent(ImGui::CalcTextSize("Next scene").x +
+    ImGui::Indent(ImGui::CalcTextSize(UiText("Next scene")).x +
                   ImGui::GetStyle().ItemSpacing.x);
-    ImGui::RadioButton("each time the title comes up##change_visit", &change,
+    ImGui::RadioButton(UiText("each time the title comes up##change_visit"), &change,
                        REIPAN_TITLE_CHANGE_VISIT);
-    ImGui::Unindent(ImGui::CalcTextSize("Next scene").x +
+    ImGui::Unindent(ImGui::CalcTextSize(UiText("Next scene")).x +
                     ImGui::GetStyle().ItemSpacing.x);
     t.change = change;
     Tooltip("Scenes are picked at random among the ticked ones, never the\n"
             "same one twice running while there is another.");
 
-    ImGui::Checkbox("Keep rotating while this window is open##rotate_open",
+    ImGui::Checkbox(UiText("Keep rotating while this window is open##rotate_open"),
                     &g_rotate_while_open);
     Tooltip("Off holds the title on the selected scene for as long as this\n"
             "window is open, so it does not fade away while it is edited.");
@@ -380,25 +383,25 @@ void PasteText(bool replace)
 
 void DrawClipboard()
 {
-    if (ImGui::Button("Copy scene##copy_scene"))
+    if (ImGui::Button(UiText("Copy scene##copy_scene")))
     {
         CopyText(g_selected);
     }
     Tooltip("The selected scene, as a [title.scene] section of reipan.ini.");
     ImGui::SameLine();
-    if (ImGui::Button("Copy all##copy_all"))
+    if (ImGui::Button(UiText("Copy all##copy_all")))
     {
         CopyText(-1);
     }
     Tooltip("[title] and every scene, exactly as reipan.ini has them.");
-    if (ImGui::Button("Paste as new scenes##paste_add"))
+    if (ImGui::Button(UiText("Paste as new scenes##paste_add")))
     {
         PasteText(false);
     }
     Tooltip("Every [title.scene] section on the clipboard, added after the\n"
             "scenes here.");
     ImGui::SameLine();
-    if (ImGui::Button("Paste, replacing all##paste_replace"))
+    if (ImGui::Button(UiText("Paste, replacing all##paste_replace")))
     {
         PasteText(true);
     }
@@ -421,11 +424,11 @@ void DrawRoom(ReiPan_ConfigTitleScene &s)
     char label[64];
 
     ImGui::SetNextItemWidth(em * 18.0f);
-    ImGui::InputText("Name##scene_name", s.name, sizeof(s.name));
+    ImGui::InputText(UiText("Name##scene_name"), s.name, sizeof(s.name));
 
     RoomLabel(s.room, label, sizeof(label));
     ImGui::SetNextItemWidth(em * 18.0f);
-    if (ImGui::BeginCombo("Room##room_pick", label, ImGuiComboFlags_HeightLarge))
+    if (ImGui::BeginCombo(UiText("Room##room_pick"), label, ImGuiComboFlags_HeightLarge))
     {
         for (int room = 1; room < TitleRoomCount(); room++)
         {
@@ -462,7 +465,7 @@ void DrawRoom(ReiPan_ConfigTitleScene &s)
             "not on this disc.");
 
     ImGui::SameLine();
-    if (ImGui::Button("Reload##room_reload"))
+    if (ImGui::Button(UiText("Reload##room_reload")))
     {
         TitleRoomReload();
     }
@@ -470,7 +473,7 @@ void DrawRoom(ReiPan_ConfigTitleScene &s)
 
     ImGui::BeginDisabled(!TitleRoomHasNight(s.room));
     bool night = TitleRoomHasNight(s.room) && s.side != 0;
-    if (ImGui::Checkbox("At night##night", &night))
+    if (ImGui::Checkbox(UiText("At night##night"), &night))
     {
         s.side = night ? 1 : 0;
     }
@@ -487,9 +490,9 @@ void DrawPoint(int point, float *eye, float *target, float *fov)
 
     ImGui::PushID(point == 0 ? "point_a" : "point_b");
 
-    ImGui::SeparatorText(point == 0 ? "Point A" : "Point B");
+    ImGui::SeparatorText(point == 0 ? UiText("Point A") : UiText("Point B"));
 
-    if (ImGui::Button("Set from the current view"))
+    if (ImGui::Button(UiText("Set from the current view")))
     {
         if (TitleRoomCaptureView(g_selected, point) != 0)
         {
@@ -503,7 +506,7 @@ void DrawPoint(int point, float *eye, float *target, float *fov)
                 : "Take the camera as it is now -- the path's, or the one you\n"
                   "are flying with \"Fly the camera\" above.");
     ImGui::SameLine();
-    if (ImGui::Button("Look from here"))
+    if (ImGui::Button(UiText("Look from here")))
     {
         TitleRoomSetFly(0);
         TitleRoomSetPreview(TitleRoomGetPreview() == point ? -1 : point);
@@ -516,13 +519,13 @@ void DrawPoint(int point, float *eye, float *target, float *fov)
     }
 
     ImGui::SetNextItemWidth(em * 18.0f);
-    ImGui::DragFloat3("Eye", eye, 0.25f, -100000.0f, 100000.0f, "%.1f");
+    ImGui::DragFloat3(UiText("Eye"), eye, 0.25f, -100000.0f, 100000.0f, "%.1f");
     Tooltip("Where the camera is, in the game's world units.  Y grows\n"
             "downwards; Rei is about seventeen tall.");
     ImGui::SetNextItemWidth(em * 18.0f);
-    ImGui::DragFloat3("Looks at", target, 0.25f, -100000.0f, 100000.0f, "%.1f");
+    ImGui::DragFloat3(UiText("Looks at"), target, 0.25f, -100000.0f, 100000.0f, "%.1f");
     ImGui::SetNextItemWidth(em * 18.0f);
-    ImGui::SliderFloat("Field of view", fov, 10.0f, 120.0f, "%.1f deg");
+    ImGui::SliderFloat(UiText("Field of view"), fov, 10.0f, 120.0f, UiText("%.1f deg"));
 
     ImGui::PopID();
 }
@@ -533,24 +536,24 @@ void DrawCamera(ReiPan_ConfigTitleScene &s)
     const bool shown = TitleRoomCurrentScene() == g_selected;
 
     static const char *const kMotions[] = {
-        "There and back", "A to B, then cut back", "A to B, then hold",
+        UiText("There and back"), UiText("A to B, then cut back"), UiText("A to B, then hold"),
     };
-    static const char *const kEasings[] = { "Smooth", "Linear" };
+    static const char *const kEasings[] = { UiText("Smooth"), UiText("Linear") };
 
     ImGui::SetNextItemWidth(em * 14.0f);
-    ImGui::Combo("Path##motion", &s.motion, kMotions, IM_ARRAYSIZE(kMotions));
+    ImGui::Combo(UiText("Path##motion"), &s.motion, kMotions, IM_ARRAYSIZE(kMotions));
     ImGui::SameLine();
     ImGui::SetNextItemWidth(em * 7.0f);
-    ImGui::Combo("Easing##easing", &s.easing, kEasings, IM_ARRAYSIZE(kEasings));
+    ImGui::Combo(UiText("Easing##easing"), &s.easing, kEasings, IM_ARRAYSIZE(kEasings));
     Tooltip("Smooth eases out of each end and into the next.");
 
     ImGui::SetNextItemWidth(em * 7.0f);
-    ImGui::DragFloat("Travel (s)##travel", &s.travel_seconds, 0.1f, 0.5f, 600.0f,
+    ImGui::DragFloat(UiText("Travel (s)##travel"), &s.travel_seconds, 0.1f, 0.5f, 600.0f,
                      "%.1f");
     Tooltip("Seconds from A to B.");
     ImGui::SameLine();
     ImGui::SetNextItemWidth(em * 7.0f);
-    ImGui::DragFloat("Hold (s)##hold", &s.hold_seconds, 0.1f, 0.0f, 600.0f, "%.1f");
+    ImGui::DragFloat(UiText("Hold (s)##hold"), &s.hold_seconds, 0.1f, 0.0f, 600.0f, "%.1f");
     Tooltip("Seconds the camera rests at each end.");
     if (s.travel_seconds < 0.5f)
     {
@@ -566,7 +569,7 @@ void DrawCamera(ReiPan_ConfigTitleScene &s)
     ImGui::BeginDisabled(!shown);
     float progress = TitleRoomGetProgress();
     ImGui::SetNextItemWidth(em * 14.0f);
-    if (ImGui::SliderFloat("Position##progress", &progress, 0.0f, 1.0f, "%.2f"))
+    if (ImGui::SliderFloat(UiText("Position##progress"), &progress, 0.0f, 1.0f, "%.2f"))
     {
         TitleRoomSetPreview(-1);
         TitleRoomSetProgress(progress);
@@ -574,13 +577,13 @@ void DrawCamera(ReiPan_ConfigTitleScene &s)
     Tooltip("Where along the path the camera is -- drag it to scrub.");
     ImGui::SameLine();
     bool paused = TitleRoomGetPaused() != 0;
-    if (ImGui::Checkbox("Pause##paused", &paused))
+    if (ImGui::Checkbox(UiText("Pause##paused"), &paused))
     {
         TitleRoomSetPaused(paused ? 1 : 0);
     }
 
     bool fly = TitleRoomGetFly() != 0;
-    if (ImGui::Checkbox("Fly the camera##fly", &fly))
+    if (ImGui::Checkbox(UiText("Fly the camera##fly"), &fly))
     {
         TitleRoomSetPreview(-1);
         TitleRoomSetFly(fly ? 1 : 0);
@@ -594,7 +597,7 @@ void DrawCamera(ReiPan_ConfigTitleScene &s)
             "The title's menus do not hear the pad while this is on.");
     ImGui::EndDisabled();
     ImGui::SameLine();
-    if (ImGui::Button("Place it by itself##frame"))
+    if (ImGui::Button(UiText("Place it by itself##frame")))
     {
         TitleRoomSetFly(0);
         TitleRoomSetPreview(-1);
@@ -665,12 +668,12 @@ void DrawLook()
     const float em = ImGui::GetFontSize();
 
     ImGui::SetNextItemWidth(em * 14.0f);
-    ImGui::SliderFloat("Dim under the logo##dim", &t.dim, 0.0f, 1.0f, "%.2f");
+    ImGui::SliderFloat(UiText("Dim under the logo##dim"), &t.dim, 0.0f, 1.0f, "%.2f");
     Tooltip("Black laid over the room and under the logo and menus, to keep\n"
             "them readable over a bright room.");
 
     bool movie = t.attract_movie != 0;
-    if (ImGui::Checkbox("Play the attract movie when idle##attract", &movie))
+    if (ImGui::Checkbox(UiText("Play the attract movie when idle##attract"), &movie))
     {
         t.attract_movie = movie ? 1 : 0;
     }
@@ -702,7 +705,7 @@ void DrawMusic()
     };
 
     ImGui::SetNextItemWidth(em * 24.0f);
-    if (ImGui::BeginCombo("Track##track", current >= 0 ? track_label(current) : "?",
+    if (ImGui::BeginCombo(UiText("Track##track"), current >= 0 ? track_label(current) : "?",
                           ImGuiComboFlags_HeightLarge))
     {
         for (int i = 0; i < TitleRoomMusicCount(); i++)
@@ -731,7 +734,7 @@ void DrawMusic()
 
     ImGui::BeginDisabled(t.music == 0);
     ImGui::SetNextItemWidth(em * 14.0f);
-    if (ImGui::SliderFloat("Volume##volume", &t.music_volume, 0.0f, 1.0f, "%.2f"))
+    if (ImGui::SliderFloat(UiText("Volume##volume"), &t.music_volume, 0.0f, 1.0f, "%.2f"))
     {
         TitleRoomMusicChanged();
     }
@@ -746,7 +749,7 @@ namespace ReiPanUiTitle
 
 void MenuItem()
 {
-    ImGui::MenuItem("Title screen...", nullptr, &g_show_title);
+    ImGui::MenuItem(UiText("Title screen..."), nullptr, &g_show_title);
     if (ImGui::IsItemHovered())
     {
         ImGui::SetTooltip("The title screen's backdrop -- scenes from the\n"
@@ -774,7 +777,7 @@ void Draw()
     const float em = ImGui::GetFontSize();
     ImGui::SetNextWindowSize(ImVec2(em * 36.0f, em * 50.0f),
                              ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("ReiPan Title Screen", &g_show_title))
+    if (!ImGui::Begin(UiText("ReiPan Title Screen"), &g_show_title))
     {
         ImGui::End();
         return;
@@ -786,7 +789,7 @@ void Draw()
 
     ImGui::BeginDisabled(reipan_config.title.backdrop !=
                          REIPAN_TITLE_BACKDROP_ROOM);
-    if (ImGui::CollapsingHeader("Scenes##scenes_header",
+    if (ImGui::CollapsingHeader(UiText("Scenes##scenes_header"),
                                 ImGuiTreeNodeFlags_DefaultOpen))
     {
         DrawSceneList();
@@ -795,19 +798,19 @@ void Draw()
 
     ReiPan_ConfigTitleScene &s = Selected();
     char header[REIPAN_TITLE_NAME_MAX + 32];
-    std::snprintf(header, sizeof(header), "Scene: %s###scene_header", s.name);
+    std::snprintf(header, sizeof(header), UiText("Scene: %s###scene_header"), s.name);
     if (ImGui::CollapsingHeader(header, ImGuiTreeNodeFlags_DefaultOpen))
     {
         DrawRoom(s);
         DrawCamera(s);
     }
-    if (ImGui::CollapsingHeader("Look##look_header", ImGuiTreeNodeFlags_DefaultOpen))
+    if (ImGui::CollapsingHeader(UiText("Look##look_header"), ImGuiTreeNodeFlags_DefaultOpen))
     {
         DrawLook();
     }
     ImGui::EndDisabled();
 
-    if (ImGui::CollapsingHeader("Music##music_header", ImGuiTreeNodeFlags_DefaultOpen))
+    if (ImGui::CollapsingHeader(UiText("Music##music_header"), ImGuiTreeNodeFlags_DefaultOpen))
     {
         DrawMusic();
     }

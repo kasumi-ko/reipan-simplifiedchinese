@@ -72,7 +72,7 @@ void MemoWrkEnd(void)
 
 int MemoSetStatus(short memo, s_char status)
 {
-    if ((u_char)status < 3) {
+    if ((u_short)memo < MEMO_NUM && (u_char)status < 3) {
         memo_wrk[memo].status = status;
         return 1;
     }
@@ -84,7 +84,7 @@ int MemoSetStatus(short memo, s_char status)
 
 int MemoSetPage(short memo, s_char page, int notice)
 {
-    if (memo_wrk[memo].page > page)
+    if ((u_short)memo >= MEMO_NUM || memo_wrk[memo].page > page)
         return 0;
     if (page >= 0 && page < memo_dat[memo].page_num) {
         memo_wrk[memo].page = page;
@@ -101,7 +101,7 @@ int MemoSetPage(short memo, s_char page, int notice)
 
 int MemoOpen(short memo)
 {
-    if (memo_wrk[memo].status != 0)
+    if ((u_short)memo >= MEMO_NUM || memo_wrk[memo].status != 0)
         return 0;
     MemoSetPage(memo, 0, 1);
     return 1;
@@ -112,7 +112,7 @@ int MemoOpen(short memo)
 
 int MemoSetNotFound(short memo)
 {
-    if (memo_wrk[memo].status == 0)
+    if ((u_short)memo >= MEMO_NUM || memo_wrk[memo].status == 0)
         return 0;
     MemoSetStatus(memo, 0);
     return 1;
@@ -123,7 +123,7 @@ int MemoSetNotFound(short memo)
 
 int MemoSetRead(short memo)
 {
-    if (memo_wrk[memo].status == 0)
+    if ((u_short)memo >= MEMO_NUM || memo_wrk[memo].status == 0)
         return 0;
     MemoSetStatus(memo, 2);
     return 1;
@@ -134,7 +134,8 @@ int MemoSetRead(short memo)
 
 int MemoNextPage(short memo)
 {
-    return MemoSetPage(memo, (s_char)(memo_wrk[memo].page + 1), 1) != 0;
+    return (u_short)memo < MEMO_NUM &&
+           MemoSetPage(memo, (s_char)(memo_wrk[memo].page + 1), 1) != 0;
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -202,10 +203,25 @@ void MemoDummy(void)
 // The page breaks of a memo page's text (the memo menu).
 // FF3 0x00203c10
 
+static short MemoGetPageIndex(short memo, s_char page)
+{
+    if ((u_short)memo >= MEMO_NUM || page < 0 || page >= memo_dat[memo].page_num)
+        return -1;
+
+    const int row = memo_dat[memo].page_top + page;
+    return (unsigned)row < MEMO_PAGE_NUM ? (short)row : -1;
+}
+
+short MemoGetCurrentPageIndex(short memo)
+{
+    return (u_short)memo < MEMO_NUM ? MemoGetPageIndex(memo, memo_wrk[memo].page) : -1;
+}
+
 s_char MemoGetPageBreakNum(short memo, s_char page)
 {
-    short row = (short)(page + memo_dat[memo].page_top);
-
+    const short row = MemoGetPageIndex(memo, page);
+    if (row < 0 || memo_page[row].text < 0)
+        return 0;
     return (s_char)MsgGetPageBreakNum(0x57, memo_page[row].text);
 }
 
@@ -429,8 +445,10 @@ void MEMO_NOTICE::DispCell(MEMO_NOTICE_CELL *cell, int title)
 
     if (title == 0)
         return;
-    str = GetMsgDataAddr(0x58, memo_title_msg[memo_page[(short)(memo_wrk[cell->memo].page
-                                                                  + memo_dat[cell->memo].page_top)].title]);
+    const short row = MemoGetCurrentPageIndex(cell->memo);
+    if (row < 0 || (u_short)memo_page[row].title >= MEMO_TITLE_NUM)
+        return;
+    str = GetMsgDataAddr(0x58, memo_title_msg[memo_page[row].title]);
     if (str != nullptr) {
         SetCurColorRGB(0x1a, 9, 3);
         PrintMsg_ArrangeOneLine(str, 0x171, 0x19, 0x2d, alpha, 0, 0, 0, 0);

@@ -247,7 +247,9 @@ int MapDrawInitRoom(MAP_ROOM_DAT *dat)
     GRA3DLIGHTDATA *light;
     void           *height;
 
-    dat->mdl.Build(ReiPan_GetHostPointer(MapLoadGetFileAddr(dat, ROOM_FILE_MDL_PK4)), nullptr);
+    const u_int model_addr = MapLoadGetFileAddr(dat, ROOM_FILE_MDL_PK4);
+    if (model_addr != 0)
+        dat->mdl.Build(ReiPan_GetHostPointer(model_addr), nullptr);
 
     if (MapAreaSideGet() == 1)
     {
@@ -255,12 +257,16 @@ int MapDrawInitRoom(MAP_ROOM_DAT *dat)
         if (MapLoadCheckRoomDataNum(dat) == 0)
             no = 0;
     }
-    sgdVerifyLightData(&dat->light, (ZERO2LIGHTDATAFILE *)MapLoadGetRoomData(dat, no));
+    auto *light_file = (ZERO2LIGHTDATAFILE *)MapLoadGetRoomData(dat, no);
+    if (light_file != nullptr)
+        sgdVerifyLightData(&dat->light, light_file);
+    else
+        memset(&dat->light, 0, sizeof(dat->light));
 
     light = &map_draw_light[0][room];
     gra3dLightDataAddOffsetPosition(light, &dat->light, dat->origin);
     gra3dSetLightData(light, nullptr);
-    if (gra3dIsMonotoneDrawEnable() != 0)
+    if (dat->mdl.mot != nullptr && gra3dIsMonotoneDrawEnable() != 0)
         dat->mdl.mot->ExecPrelight(dat->origin, (float *)map_room_rot);
     gra3dSetLightData(light, nullptr);
 
@@ -530,10 +536,12 @@ static void MapDrawRoom(MAP_ROOM_DAT *dat, u_int flags)
     if (dat->area < 0)
         return;
 
+    mot = dat->mdl.mot;
+    if (mot == nullptr)
+        return;
+
     dat->mdl.SetPosRot(dat->origin, map_room_rot);
     MapDrawSetRoomLight(dat->room, dat->area);
-
-    mot = dat->mdl.mot;
     mot->ReqDraw();
     if ((flags & 0x200) != 0)
         mot->DrawAlpha();

@@ -55,7 +55,8 @@ void delete_node(short p);                                  // FF3 0x00271970
 /* Expand one LZSS block.  `size` is the COMPRESSED byte count; the caller
  * knows the expanded size from its own header (CMP_HEADER::div_size, or
  * SLIDE_ENCODE_HEADER for a photo). */
-void SlideDecode(u_char *base, u_char *addrs, int size);     // FF3 0x00271638
+int SlideDecode(const u_char *base, u_char *addrs, int size,
+                int capacity = 0x7fffffff);                // FF3 0x00271638
 
 /* Compress `max_size` bytes at `base` into `addrs`, and answer how many bytes
  * were written.  Answers 0 for an empty input.  There is no bound on the

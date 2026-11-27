@@ -4125,8 +4125,14 @@ void PumpEvents()
     while (ReiPan_HostPollEvent(&event))
     {
         ReiPanUi::ProcessEvent(&event);
-        ReiPan_MenuMouseEvent(&event, ReiPan_InputMenuPointerFree(),
-                              ReiPan_InputMenuKeysFree());
+        const int menu_handled = ReiPan_MenuMouseEvent(&event, ReiPan_InputMenuPointerFree(),
+                                                       ReiPan_InputMenuKeysFree());
+        // A tap may begin and end between two 30 Hz pad reads.
+        if (!menu_handled && event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat &&
+            (event.key.mod & (SDL_KMOD_ALT | SDL_KMOD_GUI)) == 0)
+            ReiPan_InputQueueKeyDown(event.key.scancode);
+        else if (event.type == SDL_EVENT_WINDOW_FOCUS_LOST)
+            ReiPan_InputClearKeyboard();
         /* Play's turn at it, once the menus have had theirs. */
         ReiPan_GameMouseEvent(&event, ReiPan_InputMenuPointerFree());
         ReiPan_GyroEvent(&event);
@@ -5789,6 +5795,8 @@ TextureEntry *CreatePendingTexture(uint64_t hash, int width, int height,
  * it again.  "REIPANVD" in ASCII, which no GS region will hash to.
  */
 constexpr uint64_t kVideoTextureHash = 0x4D494F50414E5644ull;
+constexpr int kVideoTextureWidthLog2 = 10;
+constexpr int kVideoTextureHeightLog2 = 9;
 
 bool IsVideoTex0(const sceGsTex0 *tex0)
 {
@@ -5796,58 +5804,24 @@ bool IsVideoTex0(const sceGsTex0 *tex0)
     {
         return false;
     }
-    /* Address AND format, the same pairing IsCaptureSlotAddr() needs and for
-     * the same reason: the game reuses these pages.  ScreenSaverDraw() samples
-     * 0x2bc0 as a 256 px PSMT8 image with its own CLUT, which is a real
-     * texture that must still reach the decoder below -- and which would
-     * otherwise make this re-create the video texture at another size on every
-     * frame it drew. */
+    /* The title album draws photos and the movie together at 0x2bc0.
+     * Photos can use the same pixel format but have smaller texture pages. */
     if (tex0->PSM != ReiPan::GS::PSMCT32 && tex0->PSM != ReiPan::GS::PSMCT24)
     {
         return false;
     }
-    return (int)tex0->TBP0 == ReiPan_VideoGsAddr();
+    return (int)tex0->TBP0 == ReiPan_VideoGsAddr() &&
+           tex0->TW == kVideoTextureWidthLog2 &&
+           tex0->TH == kVideoTextureHeightLog2;
 }
 
-TextureEntry *GetVideoTexture(const sceGsTex0 *tex0)
+TextureEntry *GetVideoTexture()
 {
-    const int want_w = 1 << tex0->TW;
-    const int want_h = 1 << tex0->TH;
-
-    if (want_w <= 0 || want_h <= 0 || want_w > 4096 || want_h > 4096)
-    {
-        return nullptr;
-    }
+    constexpr int want_w = 1 << kVideoTextureWidthLog2;
+    constexpr int want_h = 1 << kVideoTextureHeightLog2;
 
     bool fresh_texture = false;
     auto entry = g_texture_cache.find(kVideoTextureHash);
-
-    /* A TEX0 declaring a different page than the one this was built for.  Both
-     * of the game's callers say 1024x512, so this is a re-create that has
-     * never happened -- SDL_GPU defers the release behind whatever command
-     * buffers still reference the old texture, so it is safe where it does. */
-    if (entry != g_texture_cache.end() &&
-        (entry->second.texture == nullptr || entry->second.width != want_w ||
-         entry->second.height != want_h))
-    {
-        if (entry->second.texture != nullptr)
-        {
-            /* A queued upload still names it.  Drop those first: the copy pass
-             * runs later in the frame and would write into a released
-             * texture. */
-            g_pending_texture_uploads.erase(
-                std::remove_if(g_pending_texture_uploads.begin(),
-                               g_pending_texture_uploads.end(),
-                               [&entry](const PendingTextureUpload &pending) {
-                                   return pending.texture ==
-                                          entry->second.texture;
-                               }),
-                g_pending_texture_uploads.end());
-            SDL_ReleaseGPUTexture(g_device, entry->second.texture);
-        }
-        g_texture_cache.erase(entry);
-        entry = g_texture_cache.end();
-    }
 
     if (entry == g_texture_cache.end())
     {
@@ -10246,8 +10220,13 @@ void CreateWindowAndDevice(void *ok)
         return;
     }
 
+#ifdef REIPAN_SLPS_25544_CHS
+    const char *window_title = "零～刺青之声～  [ReiPan]";
+#else
+    const char *window_title = "ReiPan";
+#endif
     g_window = SDL_CreateWindow(
-        "ReiPan", g_windowed_width, g_windowed_height,
+        window_title, g_windowed_width, g_windowed_height,
         SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
     if (g_window == nullptr)
     {
@@ -10491,7 +10470,7 @@ TextureEntry *GetTexture(const sceGsTex0 *tex0)
      * callers already do with one. */
     if (IsVideoTex0(tex0))
     {
-        return GetVideoTexture(tex0);
+        return GetVideoTexture();
     }
 
     tex0_value = ReadTex0Value(tex0);

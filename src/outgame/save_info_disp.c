@@ -192,20 +192,29 @@ void AlbumInfoPrintAlbumNo(s_char no, s_char kind, int x, int y, int step, int a
 // callcheck: GetMsgDataAddr, PrintMsg_ArrangeOneLine (SaveInfoPrintMsg)
 void AlbumInfoPrintPhotoNum(int n, int x, int y, int step, int alpha, int pri)
 {
+#ifdef REIPAN_SLPS_25544_CHS
+    // SLPS_255.44 0x133ea8: layout origin, count/capacity, then the unit.
+    constexpr int separator_group = 0x81, empty_shift = 0, leading_zero = 1;
+#else
+    constexpr int separator_group = 0x82, empty_shift = 1, leading_zero = 0;
     x += 4;
+#endif
     if (n < 0)
     {
-        int xx = x - step;
+        int xx = x - step * empty_shift;
 
         for (s_char i = 0; i < 2; i++, xx += step)
             SaveInfoPrintMsg(MSG_ALBUM, 0x27, xx, y, alpha, pri);
     }
     else
     {
-        PrintNumber_N(n, 2, x, y, SAVE_INFO_COL, (u_char)alpha, pri, 1, 0);
+        PrintNumber_N(n, 2, x, y, SAVE_INFO_COL, (u_char)alpha, pri, 1, leading_zero);
     }
-    SaveInfoPrintMsg(0x82, 6, x + step * 2, y, alpha, pri);
+    SaveInfoPrintMsg(separator_group, 6, x + step * 2, y, alpha, pri);
     PrintNumber_N(0x10, 2, x + step * 3, y, SAVE_INFO_COL, (u_char)alpha, pri, 1, 1);
+#ifdef REIPAN_SLPS_25544_CHS
+    SaveInfoPrintMsg(MSG_ALBUM, 0x2a, x + step * 5, y, alpha, pri);
+#endif
 }
 
 // date[2] (0x82,6) date[1] (0x82,6) date[0], two digits each; a negative
@@ -216,6 +225,25 @@ void AlbumInfoPrintPhotoNum(int n, int x, int y, int step, int alpha, int pri)
 // callcheck: GetMsgDataAddr, PrintMsg_ArrangeOneLine (SaveInfoPrintMsg)
 void AlbumViewPhotoInfoDisp(const int *date, int x, int y, int step, int alpha, int pri)
 {
+#ifdef REIPAN_SLPS_25544_CHS
+    // SLPS_255.44 0x134050: two fields with the month and day suffixes.
+    if (date == nullptr)
+        return;
+    for (int part = 0; part < 2; ++part)
+    {
+        const int column = x + part * 4 * step;
+        if (date[part + 1] < 0)
+        {
+            SaveInfoPrintMsg(MSG_ALBUM, 0x27, column, y, alpha, pri);
+            SaveInfoPrintMsg(MSG_ALBUM, 0x27, column + step, y, alpha, pri);
+        }
+        else
+        {
+            PrintNumber_N(date[part + 1], 2, column, y, SAVE_INFO_COL, (u_char)alpha, pri, 1, part);
+        }
+        SaveInfoPrintMsg(MSG_ALBUM, 0x28 + part, column + 2 * step, y, alpha, pri);
+    }
+#else
     int xx;
 
     if (date == nullptr)
@@ -256,4 +284,5 @@ void AlbumViewPhotoInfoDisp(const int *date, int x, int y, int step, int alpha, 
     {
         PrintNumber_N(date[0], 2, x + step * 6, y, SAVE_INFO_COL, (u_char)alpha, pri, 1, 1);
     }
+#endif
 }

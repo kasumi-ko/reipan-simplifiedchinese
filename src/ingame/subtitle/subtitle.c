@@ -39,6 +39,8 @@
 #include "system/os/system.h"                   // GetPALMode
 
 #include <string.h>                             // memcpy
+#include <stdio.h>                              // printf
+#include <stdlib.h>                             // getenv
 
 // MovieTitleDispMain's position and colour for every caption.
 #define SUBTITLE_DISP_Y         0x17c
@@ -50,7 +52,11 @@
 #define SUBTITLE_STREAM_VOL         0x3200
 
 // The message bank of each kind (rodata 0x363018).
+#ifdef REIPAN_SLPS_25544_CHS
+static const int subtitle_msg_type[SUBTITLE_KIND_MAX] = { 0x72, 0x72, 0x72, 0x7f, 0x72 };
+#else
 static const int subtitle_msg_type[SUBTITLE_KIND_MAX] = { 0x7d, 0x7d, 0x7d, 0x80, 0x7d };
+#endif
 
 // The number of rows in each kind's table (rodata 0x363030).
 static const int subtitle_data_num[SUBTITLE_KIND_MAX] = { 45, 40, 12, 7, 108 };
@@ -58,17 +64,30 @@ static const int subtitle_data_num[SUBTITLE_KIND_MAX] = { 45, 40, 12, 7, 108 };
 static int  SubTitleCheckDispAccept(void);
 static void SubTitleReqSub(int kind, int no, int stream_id, int obj_type, int obj_id, float *pos);
 
+static bool SubTitleTraceEnabled(void)
+{
+    static const bool enabled = getenv("REIPAN_TRACE_SUBTITLES") != nullptr;
+    return enabled;
+}
+
 SUBTITLE_CTRL SubTitleCtrl;                     // sbss 0x3fd040
 void *subtitle_data;                            // sdata 0x372604
+static u_int subtitle_data_size;
 
 // FF3 0x002590e0.
 
 void SubTitleDataLoadReq(void)
 {
-    subtitle_data = heapCtrlMalloc(GetSystemHeapWrkP(), GetFileSize(SUBTITLE_OBJ), 0, 0, 0);
+    const u_int size = GetFileSize(SUBTITLE_OBJ);
+    if (size < sizeof(SUBTITLE_FILE_HEAD) || size == (u_int)-1)
+        return;
+    subtitle_data = heapCtrlMalloc(GetSystemHeapWrkP(), size, 0, 0, 0);
     if (subtitle_data != nullptr)
     {
-        LoadReq(SUBTITLE_OBJ, subtitle_data);
+        if (LoadReq(SUBTITLE_OBJ, subtitle_data) < 0)
+            SubTitleDataFree();
+        else
+            subtitle_data_size = size;
     }
 }
 
@@ -76,6 +95,8 @@ void SubTitleDataLoadReq(void)
 
 void SubTitleDataFree(void)
 {
+    subtitle_data_size = 0;
+    SubTitleCtrlStructInit();
     if (subtitle_data != nullptr)
     {
         heapCtrlFree(GetSystemHeapWrkP(), subtitle_data, 0, 0, 0);
@@ -89,16 +110,44 @@ void SubTitleDataFree(void)
 
 static SUBTITLE_DATA *SubTitleDataPtrGet(int kind, int no)
 {
-    if ((u_int)kind < SUBTITLE_KIND_MAX && no >= 0)
-    {
-        if (no < subtitle_data_num[kind])
-        {
-            u_char             *top  = (u_char *)subtitle_data;
-            SUBTITLE_FILE_HEAD *head = (SUBTITLE_FILE_HEAD *)top;
-            u_int              *tbl  = (u_int *)(top + head->KindTbl[kind]);
+    if ((u_int)kind >= SUBTITLE_KIND_MAX || no < 0 || no >= subtitle_data_num[kind] ||
+        subtitle_data == nullptr || subtitle_data_size < sizeof(SUBTITLE_FILE_HEAD))
+        return nullptr;
 
-            return (SUBTITLE_DATA *)(top + tbl[no]);
-        }
+    auto *top = (u_char *)subtitle_data;
+    auto *head = (const SUBTITLE_FILE_HEAD *)top;
+    const u_int table = head->KindTbl[kind];
+    const u_int kind_end = kind + 1 < SUBTITLE_KIND_MAX ?
+        head->KindTbl[kind + 1] : subtitle_data_size;
+    const u_int table_bytes = subtitle_data_num[kind] * sizeof(u_int);
+    if (table < sizeof(SUBTITLE_FILE_HEAD) || table % alignof(u_int) != 0 ||
+        kind_end > subtitle_data_size || kind_end < table || kind_end - table < table_bytes)
+        return nullptr;
+
+    const auto *offsets = (const u_int *)(top + table);
+    const u_int first = offsets[no];
+    u_int end = kind_end;
+    // Missing rows in the compatibility table can share one empty record.
+    for (int next = no + 1; next < subtitle_data_num[kind]; next++)
+    {
+        if (offsets[next] == first)
+            continue;
+        if (offsets[next] < first || offsets[next] > kind_end)
+            return nullptr;
+        end = offsets[next];
+        break;
+    }
+    if (first < table + table_bytes || first % alignof(SUBTITLE_DATA) != 0 ||
+        first > end || end - first < sizeof(SUBTITLE_DATA))
+        return nullptr;
+
+    for (u_int pos = first + offsetof(SUBTITLE_DATA, MsgData);
+         pos <= end - sizeof(SUBTITLE_MSG_DATA); pos += sizeof(SUBTITLE_MSG_DATA))
+    {
+        const auto *line = (const SUBTITLE_MSG_DATA *)(top + pos);
+        if (line->MsgId == SUBTITLE_MSG_HOLD || line->MsgId == SUBTITLE_MSG_END ||
+            line->MsgId == SUBTITLE_MSG_LOOP)
+            return (SUBTITLE_DATA *)(top + first);
     }
     return nullptr;
 }
@@ -161,8 +210,13 @@ void SubTitleMain(int subtitle_on, int check_disp)
         return;
     }
 
-    SUBTITLE_DATA     *data = ctrl->pSubTitleData;
-    SUBTITLE_MSG_DATA *msg  = &data->MsgData[ctrl->MsgDataNo];
+    SUBTITLE_DATA *data = ctrl->pSubTitleData;
+    if (data == nullptr || (u_int)ctrl->Kind >= SUBTITLE_KIND_MAX)
+    {
+        SubTitleCtrlStructInit();
+        return;
+    }
+    SUBTITLE_MSG_DATA *msg = &data->MsgData[ctrl->MsgDataNo];
 
     // The stream ending ends the caption, wherever its lines are.
     if (ctrl->StreamId != -1 && StreamAutoIsPlaying(ctrl->StreamId) == 0)
@@ -174,8 +228,9 @@ void SubTitleMain(int subtitle_on, int check_disp)
     // GetObjectPos / StreamAutoSetPosition: inlined in the ROM.
     SubTitleUpdateStreamPosition(ctrl->StreamId, ctrl->ObjType, ctrl->ObjId);
 
-    if ((u_int)ctrl->Kind >= SUBTITLE_KIND_MAX)
+    if (msg->MsgId == SUBTITLE_MSG_END || msg->MsgId == SUBTITLE_MSG_LOOP)
     {
+        SubTitleCtrlStructInit();
         return;
     }
     // Held: the counter stops, the stream finishes on its own.
@@ -184,13 +239,16 @@ void SubTitleMain(int subtitle_on, int check_disp)
         return;
     }
 
-    if (check_disp == 0 || SubTitleCheckDispAccept() != 0)
+    if (msg->MsgId >= 0)
     {
-        if (msg->MsgId >= 0)
-        {
+        const bool visible = check_disp == 0 || SubTitleCheckDispAccept() != 0;
+        if (ctrl->Counter == 0 && SubTitleTraceEnabled())
+            printf("[subtitle] kind=%d bank=%02x id=%d frames=%d stream=%d visible=%d enabled=%d\n",
+                   ctrl->Kind, subtitle_msg_type[ctrl->Kind], msg->MsgId, msg->Frame, ctrl->StreamId,
+                   visible, subtitle_on);
+        if (visible)
             MovieTitleDispMain(subtitle_msg_type[ctrl->Kind], msg->MsgId, SUBTITLE_DISP_Y,
                                SUBTITLE_MSG_COL, 1, SUBTITLE_ALPHA, subtitle_on);
-        }
     }
 
     // The frame counts are authored at 60 Hz: PAL holds a line 5/6 as long.
@@ -235,6 +293,9 @@ static void SubTitleReqSub(int kind, int no, int stream_id, int obj_type, int ob
 {
     SUBTITLE_CTRL *ctrl = &SubTitleCtrl;
     SUBTITLE_DATA *data = SubTitleDataPtrGet(kind, no);
+    if (SubTitleTraceEnabled())
+        printf("[subtitle] request kind=%d row=%d file=%04x valid=%d\n",
+               kind, no, data == nullptr ? -1 : data->StreamFile, data != nullptr);
     if (data == nullptr)
     {
         return;

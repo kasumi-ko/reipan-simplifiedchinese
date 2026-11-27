@@ -76,11 +76,14 @@ void UnlockAll()
         state->cnt[kNormal] = 1;
         if (leaf != nullptr && leaf->id == kPhaseStoryStart && title_start_flg.load == 0)
         {
-            state->_0c = 1;
+            state->SetClearSaveFlag(1);
         }
     }
     state->_04 = 1;
     state->_08 = 1;
+#ifdef REIPAN_SLPS_25544_CHS
+    state->SetPromoMovieState(kSlotBought);
+#endif
 
     FINDER_SLOT_WRK *slot = GetFinderSlotWrk();
     for (int i = 0; i < FINDER_SLOT_MAX; i++)

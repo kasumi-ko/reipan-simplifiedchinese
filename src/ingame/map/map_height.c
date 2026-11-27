@@ -267,6 +267,11 @@ static int MhSetCtrlP(void *addr, int id)
     return 0;
 }
 
+void MhClearRoom(int room)
+{
+    MhSetCtrlP(nullptr, room);
+}
+
 // FF3 0x001fde60
 static MhCtrl *MhGetCtrlP(int id)
 {

@@ -1,5 +1,6 @@
 #include "reipan_ui.h"
 #include "reipan_rml_gamefiles.h"
+#include "reipan_ui_locale.h"
 #include "reipan_ui_saves.h"
 #include "reipan_ui_title.h"
 #include "../os/reipan_pacing.h"
@@ -41,6 +42,8 @@
 
 namespace
 {
+using ReiPanUiLocale::UiText;
+
 ImGuiContext *g_context;
 ImPlotContext *g_plot_context;
 SDL_Window *g_window;
@@ -194,20 +197,20 @@ void DrawFramePacingMenu()
     /* 60 divided by the field count, and the speed multiplier is the same
      * ratio against the game's own 2. */
     static const PacingChoice kChoices[] = {
-        {1, "1 field  -  60 fps, 2x speed"},
-        {2, "2 fields -  30 fps, normal"},
-        {3, "3 fields -  20 fps, 2/3 speed"},
-        {4, "4 fields -  15 fps, 1/2 speed"},
+        {1, UiText("1 field  -  60 fps, 2x speed")},
+        {2, UiText("2 fields -  30 fps, normal")},
+        {3, UiText("3 fields -  20 fps, 2/3 speed")},
+        {4, UiText("4 fields -  15 fps, 1/2 speed")},
     };
 
-    if (!ImGui::BeginMenu("Frame pacing"))
+    if (!ImGui::BeginMenu(UiText("Frame pacing")))
     {
         return;
     }
 
     const int active = ReiPan_GetVBlankWaitOverride();
 
-    if (ImGui::MenuItem("Follow game", nullptr, active == 0))
+    if (ImGui::MenuItem(UiText("Follow game"), nullptr, active == 0))
     {
         ReiPan_SetVBlankWaitOverride(0);
     }
@@ -235,16 +238,16 @@ void DrawFramePacingMenu()
  */
 void DrawFrameSmoothingMenu()
 {
-    if (!ImGui::BeginMenu("Frame smoothing"))
+    if (!ImGui::BeginMenu(UiText("Frame smoothing")))
     {
         return;
     }
 
     static const char *kLabels[] = {
-        "Off      -  1 present per frame",
-        "1 extra  -  2 presents per frame",
-        "2 extra  -  3 presents per frame",
-        "3 extra  -  4 presents per frame",
+        UiText("Off      -  1 present per frame"),
+        UiText("1 extra  -  2 presents per frame"),
+        UiText("2 extra  -  3 presents per frame"),
+        UiText("3 extra  -  4 presents per frame"),
     };
 
     /* Beyond the budget the tick grows instead of the frame rate rising, so
@@ -266,14 +269,14 @@ void DrawFrameSmoothingMenu()
     ImGui::TextDisabled("and vfunc() always keeps the last one for itself.");
     ImGui::Separator();
     bool interpolate = ReiPan_RendererGetPresentInterpolation() != 0;
-    if (ImGui::MenuItem("Interpolate camera", nullptr, &interpolate,
+    if (ImGui::MenuItem(UiText("Interpolate camera"), nullptr, &interpolate,
                         active != 0))
     {
         ReiPan_RendererSetPresentInterpolation(interpolate ? 1 : 0);
     }
     bool interpolate_geometry =
         ReiPan_RendererGetGeometryInterpolation() != 0;
-    if (ImGui::MenuItem("Interpolate motion", nullptr, &interpolate_geometry,
+    if (ImGui::MenuItem(UiText("Interpolate motion"), nullptr, &interpolate_geometry,
                         active != 0 && interpolate))
     {
         ReiPan_RendererSetGeometryInterpolation(interpolate_geometry ? 1 : 0);
@@ -438,11 +441,11 @@ const ProfilerHistorySample &NewestProfilerHistorySample()
 
 using ProfilerMetric = double ProfilerHistorySample::*;
 
-void SetupProfilerHistoryAxes(const char *y_axis_label = "Milliseconds")
+void SetupProfilerHistoryAxes(const char *y_axis_label = UiText("Milliseconds"))
 {
     const double first = OldestProfilerHistorySample().time_seconds;
     const double last = NewestProfilerHistorySample().time_seconds;
-    ImPlot::SetupAxis(ImAxis_X1, "Elapsed time (s)");
+    ImPlot::SetupAxis(ImAxis_X1, UiText("Elapsed time (s)"));
     ImPlot::SetupAxis(ImAxis_Y1, y_axis_label,
                       ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_RangeFit);
     ImPlot::SetupAxisLimitsConstraints(ImAxis_Y1, 0.0, HUGE_VAL);
@@ -470,14 +473,14 @@ void DrawFrameTimingGraph()
     if (ImPlot::BeginPlot("##ReiPanFrameTiming", ImVec2(-1.0f, -1.0f)))
     {
         SetupProfilerHistoryAxes();
-        PlotProfilerHistory("Frame average", &ProfilerHistorySample::frame_ms);
-        PlotProfilerHistory("Frame max", &ProfilerHistorySample::frame_max_ms);
-        PlotProfilerHistory("Workload average",
+        PlotProfilerHistory(UiText("Frame average"), &ProfilerHistorySample::frame_ms);
+        PlotProfilerHistory(UiText("Frame max"), &ProfilerHistorySample::frame_max_ms);
+        PlotProfilerHistory(UiText("Workload average"),
                             &ProfilerHistorySample::workload_ms);
-        PlotProfilerHistory("Workload max",
+        PlotProfilerHistory(UiText("Workload max"),
                             &ProfilerHistorySample::workload_max_ms);
-        PlotProfilerHistory("Game CPU", &ProfilerHistorySample::game_cpu_ms);
-        PlotProfilerHistory("Renderer", &ProfilerHistorySample::renderer_ms);
+        PlotProfilerHistory(UiText("Game CPU"), &ProfilerHistorySample::game_cpu_ms);
+        PlotProfilerHistory(UiText("Renderer"), &ProfilerHistorySample::renderer_ms);
         PlotProfilerHistory("VBlank/gate",
                             &ProfilerHistorySample::vblank_wait_ms);
         PlotProfilerHistory("Pacing target",
@@ -511,15 +514,15 @@ void DrawRendererGraph()
         SetupProfilerHistoryAxes();
         PlotProfilerHistory("Renderer total",
                             &ProfilerHistorySample::renderer_ms);
-        PlotProfilerHistory("Upload",
+        PlotProfilerHistory(UiText("Upload"),
                             &ProfilerHistorySample::renderer_upload_ms);
-        PlotProfilerHistory("Record",
+        PlotProfilerHistory(UiText("Record"),
                             &ProfilerHistorySample::renderer_record_ms);
-        PlotProfilerHistory("Acquire",
+        PlotProfilerHistory(UiText("Acquire"),
                             &ProfilerHistorySample::renderer_acquire_ms);
-        PlotProfilerHistory("Submit",
+        PlotProfilerHistory(UiText("Submit"),
                             &ProfilerHistorySample::renderer_submit_ms);
-        PlotProfilerHistory("GPU idle wait",
+        PlotProfilerHistory(UiText("GPU idle wait"),
                             &ProfilerHistorySample::gpu_idle_wait_ms);
         ImPlot::EndPlot();
     }
@@ -529,18 +532,18 @@ void DrawHitchGraphs()
 {
     ImGui::TextDisabled(
         "Worst logical frame in each ~1 s window. Inclusive phases overlap.");
-    if (ImPlot::BeginPlot("Game/transition max##ReiPanHitchGame",
+    if (ImPlot::BeginPlot(UiText("Game/transition max##ReiPanHitchGame"),
                           ImVec2(-1.0f, 255.0f)))
     {
         SetupProfilerHistoryAxes();
         PlotProfilerHistory("Frame", &ProfilerHistorySample::frame_max_ms);
-        PlotProfilerHistory("Game CPU",
+        PlotProfilerHistory(UiText("Game CPU"),
                             &ProfilerHistorySample::game_cpu_max_ms);
-        PlotProfilerHistory("Room load",
+        PlotProfilerHistory(UiText("Room load"),
                             &ProfilerHistorySample::room_load_max_ms);
-        PlotProfilerHistory("Room init",
+        PlotProfilerHistory(UiText("Room init"),
                             &ProfilerHistorySample::room_init_max_ms);
-        PlotProfilerHistory("Furniture init",
+        PlotProfilerHistory(UiText("Furniture init"),
                             &ProfilerHistorySample::room_furn_max_ms);
         PlotProfilerHistory("Model remap",
                             &ProfilerHistorySample::room_model_init_max_ms);
@@ -549,7 +552,7 @@ void DrawHitchGraphs()
         PlotProfilerHistory("SGD", &ProfilerHistorySample::sgd_cpu_max_ms);
         PlotProfilerHistory("GS image replay",
                             &ProfilerHistorySample::gs_upload_max_ms);
-        PlotProfilerHistory("Texture invalidation",
+        PlotProfilerHistory(UiText("Texture invalidation"),
                             &ProfilerHistorySample::texture_invalidate_max_ms);
         PlotProfilerHistory("Texture miss",
                             &ProfilerHistorySample::texture_miss_max_ms);
@@ -558,19 +561,19 @@ void DrawHitchGraphs()
         ImPlot::EndPlot();
     }
 
-    if (ImPlot::BeginPlot("Renderer max##ReiPanHitchRenderer",
+    if (ImPlot::BeginPlot(UiText("Renderer max##ReiPanHitchRenderer"),
                           ImVec2(-1.0f, 190.0f)))
     {
         SetupProfilerHistoryAxes();
-        PlotProfilerHistory("Renderer",
+        PlotProfilerHistory(UiText("Renderer"),
                             &ProfilerHistorySample::renderer_max_ms);
-        PlotProfilerHistory("Upload",
+        PlotProfilerHistory(UiText("Upload"),
                             &ProfilerHistorySample::renderer_upload_max_ms);
-        PlotProfilerHistory("Record",
+        PlotProfilerHistory(UiText("Record"),
                             &ProfilerHistorySample::renderer_record_max_ms);
-        PlotProfilerHistory("Acquire",
+        PlotProfilerHistory(UiText("Acquire"),
                             &ProfilerHistorySample::renderer_acquire_max_ms);
-        PlotProfilerHistory("Submit",
+        PlotProfilerHistory(UiText("Submit"),
                             &ProfilerHistorySample::renderer_submit_max_ms);
         PlotProfilerHistory("Explicit GPU idle",
                             &ProfilerHistorySample::gpu_idle_wait_max_ms);
@@ -582,7 +585,7 @@ void DrawWorldObjectsGraphs()
 {
     ImGui::TextDisabled(
         "CPU phases are inclusive and may overlap; do not add the curves.");
-    if (ImPlot::BeginPlot("CPU timings##ReiPanWorldObjectTiming",
+    if (ImPlot::BeginPlot(UiText("CPU timings##ReiPanWorldObjectTiming"),
                           ImVec2(-1.0f, 165.0f)))
     {
         SetupProfilerHistoryAxes();
@@ -610,7 +613,7 @@ void DrawWorldObjectsGraphs()
         ImPlot::EndPlot();
     }
 
-    if (ImPlot::BeginPlot("Activity##ReiPanWorldObjectActivity",
+    if (ImPlot::BeginPlot(UiText("Activity##ReiPanWorldObjectActivity"),
                           ImVec2(-1.0f, 165.0f)))
     {
         SetupProfilerHistoryAxes("Objects or commands / frame");
@@ -633,7 +636,7 @@ void DrawWorldObjectsGraphs()
 
     ImGui::TextDisabled(
         "Ideal draws = commands - compatible adjacent joins.");
-    if (ImPlot::BeginPlot("MapPut sort work##ReiPanMapPutComparisons",
+    if (ImPlot::BeginPlot(UiText("MapPut sort work##ReiPanMapPutComparisons"),
                           ImVec2(-1.0f, 120.0f)))
     {
         SetupProfilerHistoryAxes("Comparisons / frame");
@@ -641,7 +644,7 @@ void DrawWorldObjectsGraphs()
                             &ProfilerHistorySample::mapput_comparisons);
         ImPlot::EndPlot();
     }
-    if (ImPlot::BeginPlot("Queued stream payload##ReiPanWorldObjectUpload",
+    if (ImPlot::BeginPlot(UiText("Queued stream payload##ReiPanWorldObjectUpload"),
                           ImVec2(-1.0f, 165.0f)))
     {
         SetupProfilerHistoryAxes("KiB / frame");
@@ -680,7 +683,7 @@ void DrawRendererDebugViewItem(const char *label, unsigned int flag)
  */
 void DrawAntiAliasingMenu()
 {
-    if (!ImGui::BeginMenu("Anti-aliasing / filtering"))
+    if (!ImGui::BeginMenu(UiText("Anti-aliasing / filtering")))
     {
         return;
     }
@@ -695,14 +698,14 @@ void DrawAntiAliasingMenu()
      * four ImGui IDs.  1.92's conflict detector says so out loud, and behind
      * the warning the rows really do fight over the active-ID state.
      */
-    ImGui::TextDisabled("MSAA (final image)");
+    ImGui::TextDisabled(UiText("MSAA (final image)"));
     ImGui::PushID("msaa");
     for (int samples = 1; samples <= 8; samples *= 2)
     {
         char label[32];
         if (samples == 1)
         {
-            SDL_strlcpy(label, "Off", sizeof(label));
+            SDL_strlcpy(label, UiText("Off"), sizeof(label));
         }
         else
         {
@@ -747,7 +750,7 @@ void DrawAntiAliasingMenu()
         char label[32];
         if (taps == 1)
         {
-            SDL_strlcpy(label, "Off", sizeof(label));
+            SDL_strlcpy(label, UiText("Off"), sizeof(label));
         }
         else
         {
@@ -785,19 +788,19 @@ void DrawAntiAliasingMenu()
  */
 void DrawEffectsMenu()
 {
-    if (!ImGui::BeginMenu("Screen effects"))
+    if (!ImGui::BeginMenu(UiText("Screen effects")))
     {
         return;
     }
 
     const int grain = ReiPan_RendererGetFilmGrain();
 
-    ImGui::TextDisabled("Film grain");
-    if (ImGui::MenuItem("Off", nullptr, grain == REIPAN_FILM_GRAIN_OFF))
+    ImGui::TextDisabled(UiText("Film grain"));
+    if (ImGui::MenuItem(UiText("Off"), nullptr, grain == REIPAN_FILM_GRAIN_OFF))
     {
         ReiPan_RendererSetFilmGrain(REIPAN_FILM_GRAIN_OFF);
     }
-    if (ImGui::MenuItem("Native resolution", nullptr,
+    if (ImGui::MenuItem(UiText("Native resolution"), nullptr,
                         grain == REIPAN_FILM_GRAIN_NATIVE))
     {
         ReiPan_RendererSetFilmGrain(REIPAN_FILM_GRAIN_NATIVE);
@@ -819,11 +822,11 @@ void DrawEffectsMenu()
      * resolution -- and the row says so, since 0 is what the GS did.
      */
     ImGui::Separator();
-    ImGui::TextDisabled("Cut-out edges");
+    ImGui::TextDisabled(UiText("Cut-out edges"));
 
     float sharpen = ReiPan_RendererGetAlphaSharpen();
     ImGui::SetNextItemWidth(180.0f);
-    if (ImGui::SliderFloat("Sharpen", &sharpen, 0.0f, 1.0f, "%.2f"))
+    if (ImGui::SliderFloat(UiText("Sharpen"), &sharpen, 0.0f, 1.0f, "%.2f"))
     {
         ReiPan_RendererSetAlphaSharpen(sharpen);
     }
@@ -834,7 +837,7 @@ void DrawEffectsMenu()
 
     float cutoff = ReiPan_RendererGetAlphaCutoff();
     ImGui::SetNextItemWidth(180.0f);
-    if (ImGui::SliderFloat("Hard cutoff", &cutoff, 0.0f, 1.0f, "%.2f"))
+    if (ImGui::SliderFloat(UiText("Hard cutoff"), &cutoff, 0.0f, 1.0f, "%.2f"))
     {
         ReiPan_RendererSetAlphaCutoff(cutoff);
     }
@@ -858,7 +861,7 @@ void DrawEffectsMenu()
  */
 void DrawFinderMenu()
 {
-    if (!ImGui::BeginMenu("Viewfinder"))
+    if (!ImGui::BeginMenu(UiText("Viewfinder")))
     {
         return;
     }
@@ -871,7 +874,7 @@ void DrawFinderMenu()
     ReiPan_RendererGetFinderMask(&enable, &blur, &darken, &tint, &scale);
 
     bool changed = false;
-    if (ImGui::MenuItem("Treat the world outside 640x448", nullptr,
+    if (ImGui::MenuItem(UiText("Treat the world outside 640x448"), nullptr,
                         enable != 0))
     {
         enable = enable != 0 ? 0 : 1;
@@ -887,19 +890,19 @@ void DrawFinderMenu()
     ImGui::BeginDisabled(enable == 0);
     {
         ImGui::SetNextItemWidth(180.0f);
-        changed |= ImGui::SliderFloat("Blur", &blur, 0.0f, 1.0f, "%.2f");
+        changed |= ImGui::SliderFloat(UiText("Blur"), &blur, 0.0f, 1.0f, "%.2f");
         ImGui::SetNextItemWidth(180.0f);
-        changed |= ImGui::SliderFloat("Darken", &darken, 0.0f, 1.0f, "%.2f");
+        changed |= ImGui::SliderFloat(UiText("Darken"), &darken, 0.0f, 1.0f, "%.2f");
         ImGui::TextDisabled("  darken 1.00 with blur 0.00 is a black");
         ImGui::TextDisabled("  surround rather than a defocused one");
 
         ImGui::SetNextItemWidth(180.0f);
-        changed |= ImGui::SliderFloat("Indigo", &tint, 0.0f, 1.0f, "%.2f");
+        changed |= ImGui::SliderFloat(UiText("Indigo"), &tint, 0.0f, 1.0f, "%.2f");
         ImGui::TextDisabled("  drains the colour toward ink indigo and");
         ImGui::TextDisabled("  a cold, moonlit blue-white");
 
         ImGui::SetNextItemWidth(180.0f);
-        changed |= ImGui::SliderFloat("Frame size", &scale, 0.25f, 2.0f,
+        changed |= ImGui::SliderFloat(UiText("Frame size"), &scale, 0.25f, 2.0f,
                                       "%.2f");
         ImGui::TextDisabled("  1.00 is the original 640x448 frame; below");
         ImGui::TextDisabled("  it the surround covers game composition");
@@ -937,10 +940,10 @@ void DrawHdrMenu()
         int mode;
     };
     static const HdrChoice kModes[] = {
-        {"Off (SDR)", REIPAN_HDR_OFF},
-        {"Auto (use HDR when the display has it)", REIPAN_HDR_AUTO},
-        {"Force scRGB (extended linear)", REIPAN_HDR_SCRGB},
-        {"Force HDR10 (PQ)", REIPAN_HDR_HDR10},
+        {UiText("Off (SDR)"), REIPAN_HDR_OFF},
+        {UiText("Auto (use HDR when the display has it)"), REIPAN_HDR_AUTO},
+        {UiText("Force scRGB (extended linear)"), REIPAN_HDR_SCRGB},
+        {UiText("Force HDR10 (PQ)"), REIPAN_HDR_HDR10},
     };
 
     const int mode = ReiPan_RendererGetHdrMode();
@@ -986,7 +989,7 @@ void DrawHdrMenu()
     ReiPan_RendererGetHdrEffective(&effective_paper, &effective_peak);
 
     ImGui::Separator();
-    ImGui::TextDisabled("Brightness (HDR)");
+    ImGui::TextDisabled(UiText("Brightness (HDR)"));
     ImGui::BeginDisabled(!active);
     {
         const float paper = ReiPan_RendererGetHdrPaperWhite();
@@ -997,8 +1000,8 @@ void DrawHdrMenu()
         float paper_value = paper_auto ? effective_paper : paper;
         ImGui::BeginDisabled(paper_auto);
         ImGui::SetNextItemWidth(180.0f);
-        if (ImGui::SliderFloat("Paper white", &paper_value, 50.0f, 1000.0f,
-                               "%.0f nits") &&
+        if (ImGui::SliderFloat(UiText("Paper white"), &paper_value, 50.0f, 1000.0f,
+                               UiText("%.0f nits")) &&
             !paper_auto)
         {
             ReiPan_RendererSetHdrPaperWhite(paper_value);
@@ -1020,8 +1023,8 @@ void DrawHdrMenu()
         float peak_value = peak_auto ? effective_peak : peak;
         ImGui::BeginDisabled(peak_auto);
         ImGui::SetNextItemWidth(180.0f);
-        if (ImGui::SliderFloat("Peak", &peak_value, 100.0f, 4000.0f,
-                               "%.0f nits") &&
+        if (ImGui::SliderFloat(UiText("Peak"), &peak_value, 100.0f, 4000.0f,
+                               UiText("%.0f nits")) &&
             !peak_auto)
         {
             ReiPan_RendererSetHdrPeak(peak_value);
@@ -1037,19 +1040,19 @@ void DrawHdrMenu()
     }
 
     ImGui::Separator();
-    ImGui::TextDisabled("Highlights (HDR)");
+    ImGui::TextDisabled(UiText("Highlights (HDR)"));
     {
         float strength = 0.0f;
         float knee = 0.0f;
         ReiPan_RendererGetHdrExpansion(&strength, &knee);
 
         ImGui::SetNextItemWidth(180.0f);
-        if (ImGui::SliderFloat("Expansion", &strength, 0.0f, 1.0f, "%.2f"))
+        if (ImGui::SliderFloat(UiText("Expansion"), &strength, 0.0f, 1.0f, "%.2f"))
         {
             ReiPan_RendererSetHdrExpansion(strength, knee);
         }
         ImGui::SetNextItemWidth(180.0f);
-        if (ImGui::SliderFloat("Knee", &knee, 0.5f, 1.0f, "%.2f"))
+        if (ImGui::SliderFloat(UiText("Knee"), &knee, 0.5f, 1.0f, "%.2f"))
         {
             ReiPan_RendererSetHdrExpansion(strength, knee);
         }
@@ -1068,7 +1071,7 @@ void DrawHdrMenu()
  */
 void DrawGradeMenu()
 {
-    if (!ImGui::BeginMenu("Brightness and colour"))
+    if (!ImGui::BeginMenu(UiText("Brightness and colour")))
     {
         return;
     }
@@ -1081,22 +1084,22 @@ void DrawGradeMenu()
 
     bool changed = false;
     ImGui::SetNextItemWidth(180.0f);
-    changed |= ImGui::SliderFloat("Brightness", &brightness, 0.25f, 2.0f,
+    changed |= ImGui::SliderFloat(UiText("Brightness"), &brightness, 0.25f, 2.0f,
                                   "%.2f");
     ImGui::SetNextItemWidth(180.0f);
-    changed |= ImGui::SliderFloat("Contrast", &contrast, 0.5f, 2.0f,
+    changed |= ImGui::SliderFloat(UiText("Contrast"), &contrast, 0.5f, 2.0f,
                                   "%.2f");
     ImGui::SetNextItemWidth(180.0f);
-    changed |= ImGui::SliderFloat("Gamma", &gamma, 0.5f, 2.5f, "%.2f");
+    changed |= ImGui::SliderFloat(UiText("Gamma"), &gamma, 0.5f, 2.5f, "%.2f");
     ImGui::SetNextItemWidth(180.0f);
-    changed |= ImGui::SliderFloat("Saturation", &saturation, 0.0f, 2.0f,
+    changed |= ImGui::SliderFloat(UiText("Saturation"), &saturation, 0.0f, 2.0f,
                                   "%.2f");
     if (changed)
     {
         ReiPan_RendererSetGrade(brightness, contrast, gamma, saturation);
     }
 
-    if (ImGui::MenuItem("Reset grade"))
+    if (ImGui::MenuItem(UiText("Reset grade")))
     {
         ReiPan_RendererSetGrade(1.0f, 1.0f, 1.0f, 1.0f);
     }
@@ -1202,14 +1205,14 @@ void PersistSettingsIfChanged()
  * ------------------------------------------------------------------------ */
 
 const char *const kControlButtonLabels[REIPAN_PAD_BUTTON_COUNT] = {
-    "D-pad Up", "D-pad Down", "D-pad Left", "D-pad Right",
-    "Triangle", "Cross",      "Square",     "Circle",
+    UiText("D-pad Up"), UiText("D-pad Down"), UiText("D-pad Left"), UiText("D-pad Right"),
+    UiText("Triangle"), UiText("Cross"),      UiText("Square"),     UiText("Circle"),
     "L1",       "L2",         "R1",         "R2",
-    "Start",    "Select",     "L3",         "R3",
+    "Start",    UiText("Select"),     "L3",         "R3",
 };
 
 const char *const kControlStickLabels[REIPAN_PAD_STICK_COUNT] = {
-    "Left stick X", "Left stick Y", "Right stick X", "Right stick Y",
+    UiText("Left stick X"), UiText("Left stick Y"), UiText("Right stick X"), UiText("Right stick Y"),
 };
 
 enum CaptureKind
@@ -1453,7 +1456,7 @@ void DrawControlsWindow()
     }
 
     ImGui::SetNextWindowSize(ImVec2(640.0f, 560.0f), ImGuiCond_FirstUseEver);
-    if (ImGui::Begin("ReiPan Controls", &g_show_controls))
+    if (ImGui::Begin(UiText("ReiPan Controls"), &g_show_controls))
     {
         ImGui::TextWrapped(
             "These 16 buttons and 4 stick axes are what the whole game reads "
@@ -1467,7 +1470,7 @@ void DrawControlsWindow()
 
         const bool defaults = ReiPan_InputBindingsAreDefault() != 0;
         ImGui::BeginDisabled(defaults);
-        if (ImGui::Button("Reset all to defaults"))
+        if (ImGui::Button(UiText("Reset all to defaults")))
         {
             CancelCapture();
             ReiPan_InputResetBindings();
@@ -1514,9 +1517,9 @@ void DrawControlsWindow()
             }
 
             ImGui::SetNextItemWidth(320.0f);
-            if (ImGui::BeginCombo("Gamepad", preview))
+            if (ImGui::BeginCombo(UiText("Gamepad"), preview))
             {
-                if (ImGui::Selectable("Automatic (first connected)", autopick))
+                if (ImGui::Selectable(UiText("Automatic (first connected)"), autopick))
                 {
                     ReiPan_InputSetPreferredGamepad(nullptr);
                     MarkSettingsDirty();
@@ -1567,12 +1570,12 @@ void DrawControlsWindow()
         if (ImGui::BeginTable("##controls_buttons",
                               1 + REIPAN_INPUT_MAX_SOURCES, kTableFlags))
         {
-            ImGui::TableSetupColumn("Button", ImGuiTableColumnFlags_WidthFixed,
+            ImGui::TableSetupColumn(UiText("Button"), ImGuiTableColumnFlags_WidthFixed,
                                     104.0f);
             for (int s = 0; s < REIPAN_INPUT_MAX_SOURCES; s++)
             {
                 char head[24];
-                SDL_snprintf(head, sizeof(head), "Source %d", s + 1);
+                SDL_snprintf(head, sizeof(head), UiText("Source %d"), s + 1);
                 ImGui::TableSetupColumn(head);
             }
             ImGui::TableHeadersRow();
@@ -1609,7 +1612,7 @@ void DrawControlsWindow()
         }
 
         ImGui::Spacing();
-        ImGui::TextDisabled("Sticks");
+        ImGui::TextDisabled(UiText("Sticks"));
         ImGui::TextWrapped(
             "Ramp is how many updates a held key takes to reach full "
             "deflection: 1 snaps, which is what movement wants, while a higher "
@@ -1617,12 +1620,12 @@ void DrawControlsWindow()
 
         if (ImGui::BeginTable("##controls_sticks", 5, kTableFlags))
         {
-            ImGui::TableSetupColumn("Stick", ImGuiTableColumnFlags_WidthFixed,
+            ImGui::TableSetupColumn(UiText("Stick"), ImGuiTableColumnFlags_WidthFixed,
                                     104.0f);
-            ImGui::TableSetupColumn("Analog");
-            ImGui::TableSetupColumn("Key toward 0");
-            ImGui::TableSetupColumn("Key toward 255");
-            ImGui::TableSetupColumn("Ramp", ImGuiTableColumnFlags_WidthFixed,
+            ImGui::TableSetupColumn(UiText("Analog"));
+            ImGui::TableSetupColumn(UiText("Key toward 0"));
+            ImGui::TableSetupColumn(UiText("Key toward 255"));
+            ImGui::TableSetupColumn(UiText("Ramp"), ImGuiTableColumnFlags_WidthFixed,
                                     72.0f);
             ImGui::TableHeadersRow();
 
@@ -1796,7 +1799,7 @@ void DrawDataFolderWindow()
     }
 
     ImGui::SetNextWindowSize(ImVec2(660.0f, 0.0f), ImGuiCond_FirstUseEver);
-    if (ImGui::Begin("ReiPan Game Data", &g_show_data_folder))
+    if (ImGui::Begin(UiText("ReiPan Game Data"), &g_show_data_folder))
     {
         ImGui::TextWrapped(
             "Where ReiPan reads the game's files from: ZERO3.FHD with "
@@ -1806,7 +1809,7 @@ void DrawDataFolderWindow()
 
         ImGui::Separator();
 
-        ImGui::TextDisabled("In use this session");
+        ImGui::TextDisabled(UiText("In use this session"));
         ImGui::TextWrapped("%s", ReiPan_PathDataDir());
         ImGui::TextDisabled("(%s)", ReiPan_PathDataDirSource());
 
@@ -1819,7 +1822,7 @@ void DrawDataFolderWindow()
         }
 
         ImGui::Separator();
-        ImGui::TextDisabled("Folder or disc image");
+        ImGui::TextDisabled(UiText("Folder or disc image"));
 
         const float browse_width = 100.0f;
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - browse_width -
@@ -1834,7 +1837,7 @@ void DrawDataFolderWindow()
         ImGui::SameLine();
         const bool picking = g_folder_dialog_open.load(std::memory_order_acquire);
         ImGui::BeginDisabled(picking);
-        if (ImGui::Button(picking ? "Choosing..." : "Browse...",
+        if (ImGui::Button(picking ? UiText("Choosing...") : UiText("Browse..."),
                           ImVec2(browse_width, 0.0f)))
         {
             g_folder_dialog_open.store(true, std::memory_order_release);
@@ -1876,21 +1879,21 @@ void DrawDataFolderWindow()
 
         ImGui::Separator();
 
-        if (ImGui::Button("Save"))
+        if (ImGui::Button(UiText("Save")))
         {
             g_data_folder_saved =
                 ReiPan_ConfigSetDataFolder(g_data_folder_edit) != 0;
             g_data_folder_save_failed = !g_data_folder_saved;
         }
         ImGui::SameLine();
-        if (ImGui::Button("Use automatic"))
+        if (ImGui::Button(UiText("Use automatic")))
         {
             g_data_folder_edit[0] = '\0';
             g_data_folder_saved = ReiPan_ConfigSetDataFolder("") != 0;
             g_data_folder_save_failed = !g_data_folder_saved;
         }
         ImGui::SameLine();
-        if (ImGui::Button("Open this folder"))
+        if (ImGui::Button(UiText("Open this folder")))
         {
             /* A disc image is a file, and the shell would open that rather than
              * the folder it is in. */
@@ -1919,9 +1922,9 @@ void DrawDataFolderWindow()
         }
 
         ImGui::Separator();
-        ImGui::TextDisabled("Settings and saves");
+        ImGui::TextDisabled(UiText("Settings and saves"));
         ImGui::TextWrapped("%s", ReiPan_PathUserDir());
-        if (ImGui::Button("Open user folder"))
+        if (ImGui::Button(UiText("Open user folder")))
         {
             OpenFolderInShell(ReiPan_PathUserDir());
         }
@@ -1937,20 +1940,20 @@ void DrawDataFolderWindow()
  */
 void DrawDisplaySettingsMenu()
 {
-    if (!ImGui::BeginMenu("Display"))
+    if (!ImGui::BeginMenu(UiText("Display")))
     {
         return;
     }
 
-    ImGui::TextDisabled("Window");
+    ImGui::TextDisabled(UiText("Window"));
     {
         const int window_mode = ReiPan_RendererGetWindowMode();
-        if (ImGui::MenuItem("Windowed", "Alt+Enter",
+        if (ImGui::MenuItem(UiText("Windowed"), "Alt+Enter",
                             window_mode == REIPAN_WINDOW_MODE_WINDOWED))
         {
             ReiPan_RendererSetWindowMode(REIPAN_WINDOW_MODE_WINDOWED);
         }
-        if (ImGui::MenuItem("Borderless fullscreen", "Alt+Enter",
+        if (ImGui::MenuItem(UiText("Borderless fullscreen"), "Alt+Enter",
                             window_mode == REIPAN_WINDOW_MODE_BORDERLESS))
         {
             ReiPan_RendererSetWindowMode(REIPAN_WINDOW_MODE_BORDERLESS);
@@ -1958,7 +1961,7 @@ void DrawDisplaySettingsMenu()
     }
     ImGui::Separator();
 
-    ImGui::TextDisabled("Aspect ratio");
+    ImGui::TextDisabled(UiText("Aspect ratio"));
     {
         int aspect_mode = REIPAN_ASPECT_AUTO;
         float custom = 16.0f / 9.0f;
@@ -1970,12 +1973,12 @@ void DrawDisplaySettingsMenu()
             int mode;
         };
         static const AspectChoice kAspects[] = {
-            {"Auto (window)", REIPAN_ASPECT_AUTO},
-            {"Original 640:448 (PS2 framing)", REIPAN_ASPECT_ORIGINAL},
+            {UiText("Auto (window)"), REIPAN_ASPECT_AUTO},
+            {UiText("Original 640:448 (PS2 framing)"), REIPAN_ASPECT_ORIGINAL},
             {"4:3", REIPAN_ASPECT_4_3},
             {"16:9", REIPAN_ASPECT_16_9},
             {"16:10", REIPAN_ASPECT_16_10},
-            {"Custom", REIPAN_ASPECT_CUSTOM},
+            {UiText("Custom"), REIPAN_ASPECT_CUSTOM},
         };
         for (const AspectChoice &choice : kAspects)
         {
@@ -1987,7 +1990,7 @@ void DrawDisplaySettingsMenu()
         }
 
         ImGui::SetNextItemWidth(180.0f);
-        if (ImGui::SliderFloat("Custom ratio", &custom, 0.5f, 5.0f, "%.3f"))
+        if (ImGui::SliderFloat(UiText("Custom ratio"), &custom, 0.5f, 5.0f, "%.3f"))
         {
             ReiPan_RendererSetAspectMode(REIPAN_ASPECT_CUSTOM, custom);
         }
@@ -2012,12 +2015,12 @@ void DrawDisplaySettingsMenu()
  */
 void DrawGraphicsSettingsMenu()
 {
-    if (!ImGui::BeginMenu("Graphics"))
+    if (!ImGui::BeginMenu(UiText("Graphics")))
     {
         return;
     }
 
-    ImGui::TextDisabled("Graphics API");
+    ImGui::TextDisabled(UiText("Graphics API"));
     {
         const int backend = ReiPan_RendererGetBackend();
         for (int i = 0; i < REIPAN_BACKEND_COUNT; i++)
@@ -2052,25 +2055,25 @@ void DrawGraphicsSettingsMenu()
     }
     ImGui::Separator();
 
-    ImGui::TextDisabled("Render resolution");
+    ImGui::TextDisabled(UiText("Render resolution"));
     {
         int mode = REIPAN_RENDER_RES_MATCH_WINDOW;
         float scale = 1.0f;
         ReiPan_RendererGetRenderResolution(&mode, &scale);
 
-        if (ImGui::MenuItem("Match window", nullptr,
+        if (ImGui::MenuItem(UiText("Match window"), nullptr,
                             mode == REIPAN_RENDER_RES_MATCH_WINDOW))
         {
             ReiPan_RendererSetRenderResolution(
                 REIPAN_RENDER_RES_MATCH_WINDOW, scale);
         }
-        if (ImGui::MenuItem("Native PS2 (640x448 x scale)", nullptr,
+        if (ImGui::MenuItem(UiText("Native PS2 (640x448 x scale)"), nullptr,
                             mode == REIPAN_RENDER_RES_NATIVE_PS2))
         {
             ReiPan_RendererSetRenderResolution(
                 REIPAN_RENDER_RES_NATIVE_PS2, scale);
         }
-        if (ImGui::MenuItem("Window x scale", nullptr,
+        if (ImGui::MenuItem(UiText("Window x scale"), nullptr,
                             mode == REIPAN_RENDER_RES_WINDOW_SCALE))
         {
             ReiPan_RendererSetRenderResolution(
@@ -2078,32 +2081,32 @@ void DrawGraphicsSettingsMenu()
         }
 
         ImGui::SetNextItemWidth(180.0f);
-        if (ImGui::SliderFloat("Scale", &scale, 0.25f, 4.0f, "%.2fx"))
+        if (ImGui::SliderFloat(UiText("Scale"), &scale, 0.25f, 4.0f, "%.2fx"))
         {
             ReiPan_RendererSetRenderResolution(mode, scale);
         }
 
         const int filter = ReiPan_RendererGetUpscaleFilter();
-        if (ImGui::MenuItem("Upscale: nearest (sharp)", nullptr,
+        if (ImGui::MenuItem(UiText("Upscale: nearest (sharp)"), nullptr,
                             filter == REIPAN_RENDER_FILTER_NEAREST))
         {
             ReiPan_RendererSetUpscaleFilter(REIPAN_RENDER_FILTER_NEAREST);
         }
-        if (ImGui::MenuItem("Upscale: linear (smooth)", nullptr,
+        if (ImGui::MenuItem(UiText("Upscale: linear (smooth)"), nullptr,
                             filter == REIPAN_RENDER_FILTER_LINEAR))
         {
             ReiPan_RendererSetUpscaleFilter(REIPAN_RENDER_FILTER_LINEAR);
         }
 
         bool hd_fonts = reipan_config.renderer.hd_fonts != 0;
-        if (ImGui::Checkbox("HD fonts (if available)", &hd_fonts))
+        if (ImGui::Checkbox(UiText("HD fonts (if available)"), &hd_fonts))
         {
             reipan_config.renderer.hd_fonts = hd_fonts;
             ReiPan_ConfigSave();
         }
 
         bool smooth_2d = ReiPan_RendererGetSmooth2d() != 0;
-        if (ImGui::Checkbox("Smooth sprite textures", &smooth_2d))
+        if (ImGui::Checkbox(UiText("Smooth sprite textures"), &smooth_2d))
         {
             ReiPan_RendererSetSmooth2d(smooth_2d);
         }
@@ -2120,9 +2123,9 @@ void DrawGraphicsSettingsMenu()
     DrawFrameSmoothingMenu();
     ImGui::Separator();
 
-    ImGui::TextDisabled("Static mesh shading");
+    ImGui::TextDisabled(UiText("Static mesh shading"));
     const int lighting_mode = ReiPan_RendererGetLightingMode();
-    if (ImGui::MenuItem("Vertex lighting (PS2)", nullptr,
+    if (ImGui::MenuItem(UiText("Vertex lighting (PS2)"), nullptr,
                         lighting_mode == REIPAN_LIGHTING_VERTEX))
     {
         ReiPan_RendererSetLightingMode(REIPAN_LIGHTING_VERTEX);
@@ -2132,7 +2135,7 @@ void DrawGraphicsSettingsMenu()
         ImGui::SetTooltip(
             "Every light on the CPU, once per vertex. What the PS2 did.");
     }
-    if (ImGui::MenuItem("Fragment lighting (spots)", nullptr,
+    if (ImGui::MenuItem(UiText("Fragment lighting (spots)"), nullptr,
                         lighting_mode == REIPAN_LIGHTING_FRAGMENT))
     {
         ReiPan_RendererSetLightingMode(REIPAN_LIGHTING_FRAGMENT);
@@ -2142,7 +2145,7 @@ void DrawGraphicsSettingsMenu()
         ImGui::SetTooltip(
             "Spotlights per pixel, the rest per vertex on the CPU.");
     }
-    if (ImGui::MenuItem("Fragment lighting (all lights)", nullptr,
+    if (ImGui::MenuItem(UiText("Fragment lighting (all lights)"), nullptr,
                         lighting_mode == REIPAN_LIGHTING_FRAGMENT_ALL))
     {
         ReiPan_RendererSetLightingMode(REIPAN_LIGHTING_FRAGMENT_ALL);
@@ -2155,9 +2158,9 @@ void DrawGraphicsSettingsMenu()
     }
     ImGui::Separator();
 
-    ImGui::TextDisabled("Projected shadows");
+    ImGui::TextDisabled(UiText("Projected shadows"));
     const int shadow_filter = ReiPan_RendererGetShadowFilter();
-    if (ImGui::MenuItem("Hard edge (PS2)", nullptr,
+    if (ImGui::MenuItem(UiText("Hard edge (PS2)"), nullptr,
                         shadow_filter == REIPAN_SHADOW_FILTER_NONE))
     {
         ReiPan_RendererSetShadowFilter(REIPAN_SHADOW_FILTER_NONE);
@@ -2167,7 +2170,7 @@ void DrawGraphicsSettingsMenu()
         ImGui::SetTooltip(
             "One tap of the silhouette, as the projected sprite gave.");
     }
-    if (ImGui::MenuItem("Soft edge", nullptr,
+    if (ImGui::MenuItem(UiText("Soft edge"), nullptr,
                         shadow_filter == REIPAN_SHADOW_FILTER_SOFT))
     {
         ReiPan_RendererSetShadowFilter(REIPAN_SHADOW_FILTER_SOFT);
@@ -2189,7 +2192,7 @@ void DrawGraphicsSettingsMenu()
  * save writes it out. */
 void DrawMouseSettingsMenu()
 {
-    if (!ImGui::BeginMenu("Mouse"))
+    if (!ImGui::BeginMenu(UiText("Mouse")))
     {
         return;
     }
@@ -2199,26 +2202,26 @@ void DrawMouseSettingsMenu()
     bool changed = false;
 
     bool look = s.look != 0;
-    if (ImGui::MenuItem("Look with the mouse", nullptr, &look))
+    if (ImGui::MenuItem(UiText("Look with the mouse"), nullptr, &look))
     {
         s.look = look ? 1 : 0;
         changed = true;
     }
     ImGui::BeginDisabled(!look);
     ImGui::PushItemWidth(200.0f);
-    changed |= ImGui::SliderFloat("Sensitivity", &s.sensitivity, 0.25f, 4.0f,
+    changed |= ImGui::SliderFloat(UiText("Sensitivity"), &s.sensitivity, 0.25f, 4.0f,
                                   "%.2fx");
     ImGui::PopItemWidth();
     ImGui::EndDisabled();
     ImGui::Separator();
 
-    ImGui::TextDisabled("Camera Obscura button");
-    if (ImGui::MenuItem("   Hold to keep it raised", nullptr, s.camera_toggle == 0))
+    ImGui::TextDisabled(UiText("Camera Obscura button"));
+    if (ImGui::MenuItem(UiText("   Hold to keep it raised"), nullptr, s.camera_toggle == 0))
     {
         s.camera_toggle = 0;
         changed = true;
     }
-    if (ImGui::MenuItem("   Click to raise, click to lower", nullptr,
+    if (ImGui::MenuItem(UiText("   Click to raise, click to lower"), nullptr,
                         s.camera_toggle != 0))
     {
         s.camera_toggle = 1;
@@ -2245,7 +2248,7 @@ void DrawMouseSettingsMenu()
         ImGui::TextDisabled("%s", ReiPan_GameMouseSourceLabel(s.bind[act]));
     }
     ImGui::Separator();
-    if (ImGui::MenuItem("Reset mouse"))
+    if (ImGui::MenuItem(UiText("Reset mouse")))
     {
         ReiPan_GameMouseDefaults(&s);
         changed = true;
@@ -2263,7 +2266,7 @@ void DrawMouseSettingsMenu()
  * a turn reads, and whether the drift has been learned. */
 void DrawGyroSettingsMenu()
 {
-    if (!ImGui::BeginMenu("Gyro"))
+    if (!ImGui::BeginMenu(UiText("Gyro")))
     {
         return;
     }
@@ -2275,7 +2278,7 @@ void DrawGyroSettingsMenu()
     bool changed = false;
 
     bool look = s.look != 0;
-    if (ImGui::MenuItem("Aim the Camera Obscura with the gyro", nullptr, &look))
+    if (ImGui::MenuItem(UiText("Aim the Camera Obscura with the gyro"), nullptr, &look))
     {
         s.look = look ? 1 : 0;
         changed = true;
@@ -2303,7 +2306,7 @@ void DrawGyroSettingsMenu()
 
     ImGui::BeginDisabled(!look);
     ImGui::PushItemWidth(200.0f);
-    changed |= ImGui::SliderFloat("Sensitivity", &s.sensitivity,
+    changed |= ImGui::SliderFloat(UiText("Sensitivity"), &s.sensitivity,
                                   REIPAN_GYRO_SENSITIVITY_MIN,
                                   REIPAN_GYRO_SENSITIVITY_MAX, "%.2fx",
                                   ImGuiSliderFlags_Logarithmic);
@@ -2314,7 +2317,7 @@ void DrawGyroSettingsMenu()
     ImGui::PopItemWidth();
 
     ImGui::Separator();
-    ImGui::TextDisabled("Turn with");
+    ImGui::TextDisabled(UiText("Turn with"));
     if (ImGui::MenuItem("   Yaw: point the pad left and right", nullptr,
                         s.turn == REIPAN_GYRO_TURN_YAW))
     {
@@ -2328,13 +2331,13 @@ void DrawGyroSettingsMenu()
         changed = true;
     }
     bool invert_x = s.invert_x != 0;
-    if (ImGui::MenuItem("Invert X", nullptr, &invert_x))
+    if (ImGui::MenuItem(UiText("Invert X"), nullptr, &invert_x))
     {
         s.invert_x = invert_x ? 1 : 0;
         changed = true;
     }
     bool invert_y = s.invert_y != 0;
-    if (ImGui::MenuItem("Invert Y", nullptr, &invert_y))
+    if (ImGui::MenuItem(UiText("Invert Y"), nullptr, &invert_y))
     {
         s.invert_y = invert_y ? 1 : 0;
         changed = true;
@@ -2365,14 +2368,14 @@ void DrawGyroSettingsMenu()
                                 (double)status.bias_deg[1],
                                 (double)status.bias_deg[2]);
         }
-        if (ImGui::SmallButton("Recalibrate"))
+        if (ImGui::SmallButton(UiText("Recalibrate")))
         {
             ReiPan_GyroRecalibrate();
         }
         ImGui::Separator();
     }
 
-    if (ImGui::MenuItem("Reset gyro", nullptr, false,
+    if (ImGui::MenuItem(UiText("Reset gyro"), nullptr, false,
                         ReiPan_GyroSettingsAreDefault() == 0))
     {
         ReiPan_GyroDefaults(&s);
@@ -2390,7 +2393,7 @@ void DrawGyroSettingsMenu()
  * itself are what make it checkable from here, without a ghost to hand. */
 void DrawRumbleSettingsMenu()
 {
-    if (!ImGui::BeginMenu("Rumble"))
+    if (!ImGui::BeginMenu(UiText("Rumble")))
     {
         return;
     }
@@ -2403,7 +2406,7 @@ void DrawRumbleSettingsMenu()
 
     if (status.has_gamepad == 0)
     {
-        ImGui::TextDisabled("No gamepad connected");
+        ImGui::TextDisabled(UiText("No gamepad connected"));
     }
     else if (status.has_rumble == 0)
     {
@@ -2411,7 +2414,7 @@ void DrawRumbleSettingsMenu()
     }
     ImGui::PushItemWidth(200.0f);
     float strength = s.strength * 100.0f;
-    if (ImGui::SliderFloat("Strength", &strength, 0.0f, 100.0f, "%.0f%%"))
+    if (ImGui::SliderFloat(UiText("Strength"), &strength, 0.0f, 100.0f, "%.0f%%"))
     {
         s.strength = strength / 100.0f;
         changed = true;
@@ -2419,7 +2422,7 @@ void DrawRumbleSettingsMenu()
     ImGui::Separator();
 
     bool triggers = s.triggers != 0;
-    if (ImGui::MenuItem("Trigger rumble", nullptr, &triggers))
+    if (ImGui::MenuItem(UiText("Trigger rumble"), nullptr, &triggers))
     {
         s.triggers = triggers ? 1 : 0;
         changed = true;
@@ -2443,14 +2446,14 @@ void DrawRumbleSettingsMenu()
     }
     ImGui::BeginDisabled(!triggers);
     float trigger_strength = s.trigger_strength * 100.0f;
-    if (ImGui::SliderFloat("Trigger strength", &trigger_strength, 0.0f, 100.0f,
+    if (ImGui::SliderFloat(UiText("Trigger strength"), &trigger_strength, 0.0f, 100.0f,
                            "%.0f%%"))
     {
         s.trigger_strength = trigger_strength / 100.0f;
         changed = true;
     }
     bool camera = s.camera != 0;
-    if (ImGui::MenuItem("Camera Obscura (not in the original)", nullptr, &camera))
+    if (ImGui::MenuItem(UiText("Camera Obscura (not in the original)"), nullptr, &camera))
     {
         s.camera = camera ? 1 : 0;
         changed = true;
@@ -2480,13 +2483,13 @@ void DrawRumbleSettingsMenu()
         ImGui::SameLine();
         ImGui::TextDisabled("%s", motor.label);
     }
-    if (ImGui::SmallButton("Test each motor"))
+    if (ImGui::SmallButton(UiText("Test each motor")))
     {
         ReiPan_HapticsTest();
     }
     const bool cues = status.triggers == REIPAN_TRIGGERS_SDL ||
                       status.triggers == REIPAN_TRIGGERS_WINDOWS;
-    if (ImGui::BeginMenu("Play a cue", cues))
+    if (ImGui::BeginMenu(UiText("Play a cue"), cues))
     {
         for (int cue = 0; cue < REIPAN_CUE_COUNT; cue++)
         {
@@ -2502,7 +2505,7 @@ void DrawRumbleSettingsMenu()
     }
     ImGui::Separator();
 
-    if (ImGui::MenuItem("Reset rumble", nullptr, false,
+    if (ImGui::MenuItem(UiText("Reset rumble"), nullptr, false,
                         ReiPan_HapticsSettingsAreDefault() == 0))
     {
         ReiPan_HapticsDefaults(&s);
@@ -2521,18 +2524,18 @@ void DrawRumbleSettingsMenu()
  * reset worth having without opening it. */
 void DrawControlsSettingsMenu()
 {
-    if (!ImGui::BeginMenu("Controls"))
+    if (!ImGui::BeginMenu(UiText("Controls")))
     {
         return;
     }
 
-    ImGui::MenuItem("Rebind keyboard and gamepad...", nullptr,
+    ImGui::MenuItem(UiText("Rebind keyboard and gamepad..."), nullptr,
                     &g_show_controls);
     DrawMouseSettingsMenu();
     DrawGyroSettingsMenu();
     DrawRumbleSettingsMenu();
     ImGui::Separator();
-    if (ImGui::MenuItem("Reset all bindings", nullptr, false,
+    if (ImGui::MenuItem(UiText("Reset all bindings"), nullptr, false,
                         ReiPan_InputBindingsAreDefault() == 0))
     {
         CancelCapture();
@@ -2549,7 +2552,7 @@ void DrawControlsSettingsMenu()
  */
 void DrawCameraSettingsMenu()
 {
-    if (!ImGui::BeginMenu("Camera"))
+    if (!ImGui::BeginMenu(UiText("Camera")))
     {
         return;
     }
@@ -2559,7 +2562,7 @@ void DrawCameraSettingsMenu()
     bool changed = false;
 
     bool enabled = s.enabled != 0;
-    if (ImGui::MenuItem("Over-the-shoulder camera", nullptr, &enabled))
+    if (ImGui::MenuItem(UiText("Over-the-shoulder camera"), nullptr, &enabled))
     {
         s.enabled = enabled ? 1 : 0;
         changed = true;
@@ -2569,23 +2572,23 @@ void DrawCameraSettingsMenu()
     ImGui::Separator();
 
     bool left = s.side_left != 0;
-    if (ImGui::MenuItem("Left shoulder", nullptr, &left, enabled))
+    if (ImGui::MenuItem(UiText("Left shoulder"), nullptr, &left, enabled))
     {
         s.side_left = left ? 1 : 0;
         changed = true;
     }
     bool collision = s.collision != 0;
-    if (ImGui::MenuItem("Collision", nullptr, &collision, enabled))
+    if (ImGui::MenuItem(UiText("Collision"), nullptr, &collision, enabled))
     {
         s.collision = collision ? 1 : 0;
         changed = true;
     }
-    if (ImGui::BeginMenu("Scare camera", enabled))
+    if (ImGui::BeginMenu(UiText("Scare camera"), enabled))
     {
         static const char *const kScare[REIPAN_OTS_SCARE_COUNT] = {
-            "Guided - stay, turn towards the scare once",
-            "Original - the game's own shot",
-            "Off - stay, look nowhere",
+            UiText("Guided - stay, turn towards the scare once"),
+            UiText("Original - the game's own shot"),
+            UiText("Off - stay, look nowhere"),
         };
         for (int i = 0; i < REIPAN_OTS_SCARE_COUNT; i++)
         {
@@ -2600,14 +2603,14 @@ void DrawCameraSettingsMenu()
         ImGui::EndMenu();
     }
     bool follow = s.auto_follow != 0;
-    if (ImGui::MenuItem("Follow behind while walking", nullptr, &follow,
+    if (ImGui::MenuItem(UiText("Follow behind while walking"), nullptr, &follow,
                         enabled))
     {
         s.auto_follow = follow ? 1 : 0;
         changed = true;
     }
     bool invert = s.invert_y != 0;
-    if (ImGui::MenuItem("Invert vertical look", nullptr, &invert, enabled))
+    if (ImGui::MenuItem(UiText("Invert vertical look"), nullptr, &invert, enabled))
     {
         s.invert_y = invert ? 1 : 0;
         changed = true;
@@ -2616,19 +2619,19 @@ void DrawCameraSettingsMenu()
 
     ImGui::BeginDisabled(!enabled);
     ImGui::PushItemWidth(220.0f);
-    changed |= ImGui::SliderFloat("Distance", &s.distance, 10.0f, 45.0f, "%.1f");
-    changed |= ImGui::SliderFloat("Height", &s.height, 10.0f, 32.0f, "%.1f");
-    changed |= ImGui::SliderFloat("Shoulder offset", &s.side, 0.0f, 12.0f,
+    changed |= ImGui::SliderFloat(UiText("Distance"), &s.distance, 10.0f, 45.0f, "%.1f");
+    changed |= ImGui::SliderFloat(UiText("Height"), &s.height, 10.0f, 32.0f, "%.1f");
+    changed |= ImGui::SliderFloat(UiText("Shoulder offset"), &s.side, 0.0f, 12.0f,
                                   "%.1f");
-    changed |= ImGui::SliderFloat("Field of view", &s.fov_deg, 35.0f, 80.0f,
-                                  "%.0f deg");
-    changed |= ImGui::SliderFloat("Look speed", &s.sensitivity, 0.25f, 3.0f,
+    changed |= ImGui::SliderFloat(UiText("Field of view"), &s.fov_deg, 35.0f, 80.0f,
+                                  UiText("%.0f deg"));
+    changed |= ImGui::SliderFloat(UiText("Look speed"), &s.sensitivity, 0.25f, 3.0f,
                                   "%.2fx");
-    changed |= ImGui::SliderFloat("Smoothing", &s.smoothing, 0.0f, 0.8f,
+    changed |= ImGui::SliderFloat(UiText("Smoothing"), &s.smoothing, 0.0f, 0.8f,
                                   "%.2f");
     ImGui::PopItemWidth();
     ImGui::EndDisabled();
-    if (ImGui::MenuItem("Reset camera settings", nullptr, false, enabled))
+    if (ImGui::MenuItem(UiText("Reset camera settings"), nullptr, false, enabled))
     {
         ReiPan_OverShoulderSettings d;
         ReiPan_OverShoulderDefaults(&d);
@@ -2686,7 +2689,7 @@ void DrawCameraSettingsMenu()
  */
 void DrawSettingsMenu()
 {
-    if (!ImGui::BeginMenu("Settings"))
+    if (!ImGui::BeginMenu(UiText("Settings")))
     {
         return;
     }
@@ -2701,12 +2704,12 @@ void DrawSettingsMenu()
     ReiPanUiSaves::MenuItem();
     ImGui::Separator();
 
-    ImGui::MenuItem("Game data folder...", nullptr, &g_show_data_folder);
-    if (ImGui::MenuItem("Open user data folder"))
+    ImGui::MenuItem(UiText("Game data folder..."), nullptr, &g_show_data_folder);
+    if (ImGui::MenuItem(UiText("Open user data folder")))
     {
         OpenFolderInShell(ReiPan_PathUserDir());
     }
-    if (ImGui::MenuItem("Open game data folder"))
+    if (ImGui::MenuItem(UiText("Open game data folder")))
     {
         OpenFolderInShell(ReiPan_PathDataDir());
     }
@@ -2716,13 +2719,13 @@ void DrawSettingsMenu()
 /* Assists > Unlocks: what a finished game hands out, without finishing it. */
 void DrawUnlocksMenu()
 {
-    if (!ImGui::BeginMenu("Unlocks"))
+    if (!ImGui::BeginMenu(UiText("Unlocks")))
     {
         return;
     }
 
     bool unlock_all = ReiPan_AssistsUnlockAll() != 0;
-    if (ImGui::MenuItem("Unlock everything", nullptr, &unlock_all))
+    if (ImGui::MenuItem(UiText("Unlock everything"), nullptr, &unlock_all))
     {
         ReiPan_AssistsSetUnlockAll(unlock_all ? 1 : 0);
     }
@@ -2747,7 +2750,7 @@ void DrawUnlocksMenu()
  */
 void DrawAssistsMenu()
 {
-    if (!ImGui::BeginMenu("Assists"))
+    if (!ImGui::BeginMenu(UiText("Assists")))
     {
         return;
     }
@@ -2764,28 +2767,28 @@ void DrawAssistsMenu()
  */
 void DrawDiagnosticsMenu()
 {
-    if (!ImGui::BeginMenu("Diagnostics / A-B"))
+    if (!ImGui::BeginMenu(UiText("Diagnostics / A-B")))
     {
         return;
     }
 
     DrawRendererDebugViewItem(
-        "Disable host 3D quads (simulation + PS2 packets continue)",
+        UiText("Disable host 3D quads (simulation + PS2 packets continue)"),
         REIPAN_RENDERER_DEBUG_DISABLE_BILLBOARD_HOST);
     DrawRendererDebugViewItem(
-        "Skip legacy PS2 billboard packets (host visuals remain)",
+        UiText("Skip legacy PS2 billboard packets (host visuals remain)"),
         REIPAN_RENDERER_DEBUG_SKIP_BILLBOARD_LEGACY_PACKETS);
     DrawRendererDebugViewItem(
-        "Disable sky dome grid (flat fog/background remains)",
+        UiText("Disable sky dome grid (flat fog/background remains)"),
         REIPAN_RENDERER_DEBUG_DISABLE_SKY_DOME);
     DrawRendererDebugViewItem(
-        "Disable sky horizon quad (flat fog/background remains)",
+        UiText("Disable sky horizon quad (flat fog/background remains)"),
         REIPAN_RENDERER_DEBUG_DISABLE_SKY_HORIZON);
     DrawRendererDebugViewItem(
-        "Disable 2D depth (photo/tray depth-stencil passes unmasked)",
+        UiText("Disable 2D depth (photo/tray depth-stencil passes unmasked)"),
         REIPAN_RENDERER_DEBUG_DISABLE_2D_DEPTH);
     DrawRendererDebugViewItem(
-        "Shadow projector view (red occluded / green lit / blue unprojected)",
+        UiText("Shadow projector view (red occluded / green lit / blue unprojected)"),
         REIPAN_RENDERER_DEBUG_SHADOW_VIEW);
     {
         int shadows = 0, casters = 0, receivers = 0, valid = 0;
@@ -2797,9 +2800,9 @@ void DrawDiagnosticsMenu()
     }
     ImGui::Separator();
 
-    ImGui::TextDisabled("Static meshes");
+    ImGui::TextDisabled(UiText("Static meshes"));
     bool resident = ReiPan_RendererGetResidentMeshes() != 0;
-    if (ImGui::MenuItem("Keep geometry on the GPU", nullptr, &resident))
+    if (ImGui::MenuItem(UiText("Keep geometry on the GPU"), nullptr, &resident))
     {
         ReiPan_RendererSetResidentMeshes(resident ? 1 : 0);
     }
@@ -2812,7 +2815,7 @@ void DrawDiagnosticsMenu()
             "PS2-shaped path always has -- the A/B if anything differs.");
     }
     bool resident_textures = ReiPan_RendererGetResidentTextures() != 0;
-    if (ImGui::MenuItem("Stop re-sending their textures", nullptr,
+    if (ImGui::MenuItem(UiText("Stop re-sending their textures"), nullptr,
                         &resident_textures))
     {
         ReiPan_RendererSetResidentTextures(resident_textures ? 1 : 0);
@@ -2838,26 +2841,26 @@ void DrawDiagnosticsMenu()
  */
 void DrawDebugMenu()
 {
-    if (!ImGui::BeginMenu("Debug"))
+    if (!ImGui::BeginMenu(UiText("Debug")))
     {
         return;
     }
 
     const bool summary_before = g_show_performance_summary;
     const bool fps_only_before = g_summary_fps_only;
-    ImGui::TextDisabled("Profiler");
+    ImGui::TextDisabled(UiText("Profiler"));
     {
         const bool visible =
             g_show_performance_summary || g_show_performance_graphs;
-        if (ImGui::MenuItem("Show profiler", nullptr, visible))
+        if (ImGui::MenuItem(UiText("Show profiler"), nullptr, visible))
         {
             const bool show = !visible;
             g_show_performance_summary = show;
             g_show_performance_graphs = show;
         }
     }
-    ImGui::MenuItem("Summary", nullptr, &g_show_performance_summary);
-    ImGui::MenuItem("   FPS only", nullptr, &g_summary_fps_only,
+    ImGui::MenuItem(UiText("Summary"), nullptr, &g_show_performance_summary);
+    ImGui::MenuItem(UiText("   FPS only"), nullptr, &g_summary_fps_only,
                     g_show_performance_summary);
     if (summary_before != g_show_performance_summary || fps_only_before != g_summary_fps_only)
     {
@@ -2865,19 +2868,19 @@ void DrawDebugMenu()
         reipan_config.profiler_fps_only = g_summary_fps_only;
         ReiPan_ConfigSave();
     }
-    ImGui::MenuItem("Graphs", nullptr, &g_show_performance_graphs);
+    ImGui::MenuItem(UiText("Graphs"), nullptr, &g_show_performance_graphs);
     /* The graph window carries these three as well; they are here for when
      * it is closed, a level down so they do not crowd the toggles above. */
-    if (ImGui::BeginMenu("Graph history"))
+    if (ImGui::BeginMenu(UiText("Graph history")))
     {
-        if (ImGui::MenuItem("Pause", nullptr, &g_pause_performance_history) &&
+        if (ImGui::MenuItem(UiText("Pause"), nullptr, &g_pause_performance_history) &&
             g_pause_performance_history)
         {
             g_follow_performance_history = false;
         }
-        ImGui::MenuItem("Follow latest", nullptr,
+        ImGui::MenuItem(UiText("Follow latest"), nullptr,
                         &g_follow_performance_history);
-        if (ImGui::MenuItem("Clear", nullptr, false,
+        if (ImGui::MenuItem(UiText("Clear"), nullptr, false,
                             g_profiler_history_count != 0))
         {
             ClearProfilerHistory();
@@ -2887,19 +2890,19 @@ void DrawDebugMenu()
     DrawFramePacingMenu();
     ImGui::Separator();
 
-    ImGui::TextDisabled("Render views");
-    DrawRendererDebugViewItem("Wireframe",
+    ImGui::TextDisabled(UiText("Render views"));
+    DrawRendererDebugViewItem(UiText("Wireframe"),
                               REIPAN_RENDERER_DEBUG_WIREFRAME);
-    DrawRendererDebugViewItem("Disable depth test/write",
+    DrawRendererDebugViewItem(UiText("Disable depth test/write"),
                               REIPAN_RENDERER_DEBUG_DISABLE_DEPTH);
-    DrawRendererDebugViewItem("Flat colours",
+    DrawRendererDebugViewItem(UiText("Flat colours"),
                               REIPAN_RENDERER_DEBUG_FLAT_COLOUR);
-    DrawRendererDebugViewItem("Disable lighting",
+    DrawRendererDebugViewItem(UiText("Disable lighting"),
                               REIPAN_RENDERER_DEBUG_DISABLE_LIGHTING);
     {
         bool light_cone = ReiPan_DebugLightConeEnabled() != 0;
 
-        if (ImGui::MenuItem("Player light cone", nullptr, &light_cone))
+        if (ImGui::MenuItem(UiText("Player light cone"), nullptr, &light_cone))
         {
             ReiPan_DebugSetLightCone(light_cone ? 1 : 0);
         }
@@ -2914,22 +2917,22 @@ void DrawDebugMenu()
     DrawDiagnosticsMenu();
     ImGui::Separator();
 
-    ImGui::TextDisabled("Developer");
-    ImGui::MenuItem("Start point / snapshots...", nullptr, &g_show_warp);
+    ImGui::TextDisabled(UiText("Developer"));
+    ImGui::MenuItem(UiText("Start point / snapshots..."), nullptr, &g_show_warp);
     if (ImGui::IsItemHovered())
     {
-        ImGui::SetTooltip("Start a new game in a chosen area, world and chapter\n"
+        ImGui::SetTooltip(UiText("Start a new game in a chosen area, world and chapter\n"
                           "(the house and its cat included), save and load\n"
                           "snapshots of play, open or start events, and watch\n"
-                          "the cat (reipan/debug/reipan_warp.cpp).");
+                          "the cat (reipan/debug/reipan_warp.cpp)."));
     }
-    ImGui::MenuItem("Event browser...", nullptr, &g_show_events);
+    ImGui::MenuItem(UiText("Event browser..."), nullptr, &g_show_events);
     if (ImGui::IsItemHovered())
     {
-        ImGui::SetTooltip("Every event in the game, Hour by Hour, with its\n"
+        ImGui::SetTooltip(UiText("Every event in the game, Hour by Hour, with its\n"
                           "conditions, programs and live state: jump to one,\n"
                           "take Rei to where it starts, or force its state\n"
-                          "(reipan/debug/reipan_events.cpp).");
+                          "(reipan/debug/reipan_events.cpp)."));
     }
 
     ImGui::EndMenu();
@@ -2955,7 +2958,7 @@ void DrawMainMenuBar()
     ReiPan_GameMouseGetSettings(&mouse);
     if (mouse.look)
     {
-        const char *hint = "F1 hides this bar and lets the mouse look around";
+        const char *hint = UiText("F1 hides this bar and lets the mouse look around");
         const float width = ImGui::CalcTextSize(hint).x;
         const float x = ImGui::GetWindowWidth() - width - 12.0f;
         if (x > ImGui::GetCursorPosX())
@@ -3185,24 +3188,24 @@ void DrawProfilerGraphs()
     }
 
     ImGui::SetNextWindowSize(ImVec2(860.0f, 520.0f), ImGuiCond_FirstUseEver);
-    if (ImGui::Begin("ReiPan Profiler Graphs", &g_show_performance_graphs))
+    if (ImGui::Begin(UiText("ReiPan Profiler Graphs"), &g_show_performance_graphs))
     {
-        if (ImGui::Checkbox("Pause history", &g_pause_performance_history) &&
+        if (ImGui::Checkbox(UiText("Pause history"), &g_pause_performance_history) &&
             g_pause_performance_history)
         {
             g_follow_performance_history = false;
         }
         ImGui::SameLine();
-        ImGui::Checkbox("Follow latest", &g_follow_performance_history);
+        ImGui::Checkbox(UiText("Follow latest"), &g_follow_performance_history);
         ImGui::SameLine();
-        if (ImGui::Button("Clear"))
+        if (ImGui::Button(UiText("Clear")))
         {
             ClearProfilerHistory();
         }
 
         if (g_profiler_history_count == 0)
         {
-            ImGui::TextDisabled("Waiting for the first profiler sample...");
+            ImGui::TextDisabled(UiText("Waiting for the first profiler sample..."));
         }
         else
         {
@@ -3221,22 +3224,22 @@ void DrawProfilerGraphs()
                     DrawFrameTimingGraph();
                     ImGui::EndTabItem();
                 }
-                if (ImGui::BeginTabItem("Game CPU"))
+                if (ImGui::BeginTabItem(UiText("Game CPU")))
                 {
                     DrawGameCpuGraph();
                     ImGui::EndTabItem();
                 }
-                if (ImGui::BeginTabItem("Renderer"))
+                if (ImGui::BeginTabItem(UiText("Renderer")))
                 {
                     DrawRendererGraph();
                     ImGui::EndTabItem();
                 }
-                if (ImGui::BeginTabItem("Hitches"))
+                if (ImGui::BeginTabItem(UiText("Hitches")))
                 {
                     DrawHitchGraphs();
                     ImGui::EndTabItem();
                 }
-                if (ImGui::BeginTabItem("World objects"))
+                if (ImGui::BeginTabItem(UiText("World objects")))
                 {
                     DrawWorldObjectsGraphs();
                     ImGui::EndTabItem();
@@ -3522,7 +3525,16 @@ bool Init(SDL_Window *window, SDL_GPUDevice *device,
     io.IniFilename = nullptr;
     ApplyTormentedStyle();
     ApplyTormentedPlotStyle();
-
+    const std::string chinese_font = ReiPanUiLocale::ChineseFontPath();
+    if (!chinese_font.empty())
+    {
+        ImGui::GetStyle().FontSizeBase = 16.0f;
+        io.FontDefault = io.Fonts->AddFontDefault();
+        ImFontConfig fallback;
+        fallback.MergeMode = true;
+        if (io.Fonts->AddFontFromFileTTF(chinese_font.c_str(), 16.0f, &fallback) == nullptr)
+            SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "ReiPan: unable to load Windows Chinese UI font");
+    }
     g_platform_initialized = ImGui_ImplSDL3_InitForSDLGPU(window);
     if (!g_platform_initialized)
     {
@@ -3618,9 +3630,11 @@ void ProcessEvent(const SDL_Event *event)
         if (toggle)
         {
             g_show_main_menu_bar = !g_show_main_menu_bar;
+#ifndef REIPAN_SLPS_25544_CHS
             /* Remembered for the next launch. */
             reipan_config.overlay_menu_bar = g_show_main_menu_bar ? 1 : 0;
             ReiPan_ConfigSave();
+#endif
         }
     }
 }
@@ -3689,7 +3703,7 @@ void Draw()
         ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize |
         ImGuiWindowFlags_NoNav;
 
-    if (ImGui::Begin("ReiPan Performance", nullptr, window_flags))
+    if (ImGui::Begin(UiText("ReiPan Performance"), nullptr, window_flags))
     {
         const ReiPanProfilerStats &profiler = g_performance_stats.profiler;
         const float camera_motion = ReiPan_RendererGetCameraMotion();

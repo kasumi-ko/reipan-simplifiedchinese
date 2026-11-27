@@ -11,7 +11,7 @@
  * ======================================================================== */
 #include "ingame/map/MapLoad.h"
 
-#include <string.h>                             // memset
+#include <string.h>                             // memcmp, memset
 
 #include "common/pk4.h"                         // PK4_HEADER, Pk4GetData
 #include "graphics/mmanage.h"                   // ModelManager, model_collision_set (MapLoadRoomMission)
@@ -21,7 +21,7 @@
 #include "ingame/map/MapPut.h"                  // MapPutSetFlg
 #include "ingame/map/RegDat.h"                  // RegDatInit, RegDatResetNoRegistList
 #include "ingame/map/foot_se.h"                 // foot_seSetRoom
-#include "ingame/map/map_height.h"              // MhSetOffset2
+#include "ingame/map/map_height.h"              // MhClearRoom, MhSetOffset2
 #include "ingame/photo/photo_obj.h"              // PhotoObjAreaOn / Off
 #include "ingame/map/MapEff.h"                  // MapLoadHookNop, MapLoadSlotReset
 #include "ingame/map/MapDoor.h"      // door table, door motion pack
@@ -407,6 +407,7 @@ void MapLoadDeleteRoom(int room)
         return;
     }
     dat = &MapLoadBuff[room];
+    MhClearRoom(room);
     MapDrawDeleteRoom(dat);
     dat->area = -1;
     dat->stat = MAP_ROOM_HIDE;
@@ -441,13 +442,18 @@ u_int MapLoadGetFileAddr(MAP_ROOM_DAT *dat, int no)
 // FF3 0x0011b870.
 void *MapLoadGetRoomData(MAP_ROOM_DAT *dat, int no)
 {
-    u_int pk4 = MapLoadGetFileAddr(dat, ROOM_FILE_DATA_PK4);
+    const u_int address = MapLoadGetFileAddr(dat, ROOM_FILE_DATA_PK4);
 
-    if (pk4 == 0)
+    if (address == 0)
     {
         return nullptr;
     }
-    return Pk4GetData(ReiPan_GetHostPointer(pk4), no);
+    auto *pk4 = (PK4_HEADER *)ReiPan_GetHostPointer(address);
+    // RS410 starts with the registration PK4. Its pack omits the light
+    // member entirely, shifting the height, hit and placement data.
+    if (pk4->num == 5 && memcmp(Pk4GetData(pk4, 0), "PK4", 4) == 0)
+        return Pk4GetData(pk4, no - 1);
+    return Pk4GetData(pk4, no);
 }
 
 // FF3 0x0011b8b8.

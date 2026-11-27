@@ -21,6 +21,7 @@
 #include "main/gphase.h"
 #include "outgame/autoload.h"
 #include "outgame/autoload_scr.h"
+#include "system/b2d/B2dFile.h"
 #include "reipan/reipan_memory.h"       // PC: ReiPan_GetHostPointer
 #include "system/b2d/BpCtl.h"
 #include "system/os/system.h"           // GetPALMode
@@ -278,7 +279,16 @@ int one_Logo_Main(void)
     {
     case 0:
         handle = BpCtlGetHandleByFileNo(LOGO_BP_FILE);
-        label = "T2 in";
+        if (B2dFileFindLabel(handle, "T2 in") == nullptr)
+        {
+            // The Japanese layouts begin with TECMO.
+            GetGPhaseCtrl()->leaf->state_cnt = 4;
+            label = "TECMO in";
+        }
+        else
+        {
+            label = "T2 in";
+        }
         break;
 
     case 1: case 3: case 5: case 7: case 9: case 11:
@@ -335,7 +345,11 @@ int one_Logo_Main(void)
         return 0;
     }
 
-    BpPlayLabel(handle, label);
+    if (BpPlayLabel(handle, label) < 0)
+    {
+        GetGPhaseCtrl()->SetNext(15, 0);
+        return 1;
+    }
     LogoStepNext();
     return 0;
 }

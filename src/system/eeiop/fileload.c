@@ -166,11 +166,9 @@ static void _intr_wait_load_func(void *buffer, void *arg)
 
 void FileLoadReqEEWait(int file_no, void *adrs)
 {
-    static int this_thread_id;      // sbss gp+0x524
-
-    this_thread_id = GetThreadId();
-    FileLoadReqEE(file_no, adrs, 10, _intr_wait_load_func, &this_thread_id);
-    SleepThread();
+    int this_thread_id = GetThreadId();
+    if (FileLoadReqEE(file_no, adrs, 10, _intr_wait_load_func, &this_thread_id) >= 0)
+        SleepThread();
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -641,7 +639,19 @@ static int FileLoadReq(int file_no, char *adrs, int priority, FILE_LOAD_CALLBACK
     FILE_LOAD_WRK *wrk;
     int            ret;
 
+    const u_int bytes = GetFileSize(file_no);
+    const u_int transfer = cddatIsCmpFile(file_no) ? GetFileCmpSize(file_no) : bytes;
+    if (bytes == 0 || bytes == (u_int)-1 || transfer == 0 || transfer > 0x7fffffffu ||
+        (adrs == nullptr && type != FILE_LOAD_TYPE_SPU))
+        return -1;
+
     SuspendThread(load_th_idx);
+    if (file_load_sys.yet_files >= file_load_sys.file_load_wrk_max)
+    {
+        ResumeThread(load_th_idx);
+        printf("ReiPan: file queue full while requesting %04x\n", file_no);
+        return -1;
+    }
 
     if (file_load_sys.yet_files == 0)
     {
@@ -663,7 +673,7 @@ static int FileLoadReq(int file_no, char *adrs, int priority, FILE_LOAD_CALLBACK
     wrk->type         = type;
     wrk->priority     = priority;
     wrk->read_size    = 0;
-    wrk->size         = cddatIsCmpFile(file_no) == 0 ? (int)GetFileSize(file_no) : (int)GetFileCmpSize(file_no);
+    wrk->size         = (int)transfer;
 
     file_load_sys.yet_files++;
     wrk->temp_id = file_load_wrk_id++;

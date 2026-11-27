@@ -31,6 +31,7 @@
 #include "album/prg/album_mem.h"            // AlbumMemInit / Main / Free, GetAlbumMemAddr
 #include "album/prg/album_save_scr.h"       // AlbumSaveScrSlotSelIsOpen, AlbumSaveScrListIsIn, AlbumSaveScrMsgIsOpen
 #include "album/prg/album.h"                 // AlbumSlotInfo*, AlbumCurInfoStamp
+#include "graphics/motion/anicode.h"         // SlotSelMouse
 #include "system/mc/prg/mc.h"               // MemoryCardExeInit, MemoryCardEnd
 #include "system/mc/prg/mc_check.h"
 #include "system/mc/prg/mc_check_broken.h"
@@ -261,7 +262,7 @@ static void AlbumSaveSlotSelPad(void)
         return;
     }
 
-    ReiPan_MenuMouseBegin(REIPAN_MM_WHEEL_VERTICAL, nullptr);    // PC
+    SlotSelMouse(album_save_ctrl.slot_csr);
 
     if (CheckPadRptPlaySe(ALBUM_SAVE_PAD_UP, ALBUM_SAVE_SE_CSR, 0) ||
         CheckPadRptPlaySe(ALBUM_SAVE_PAD_DOWN, ALBUM_SAVE_SE_CSR, 0))

@@ -83,7 +83,14 @@ struct START_MENU_BONUS
 };
 static_assert(sizeof(START_MENU_BONUS) == 0x8, "START_MENU_BONUS is 0x8 bytes");
 
-static const START_MENU_BONUS start_menu_bonus[FINDER_SLOT_MAX] =     /* rodata 0x358438 */
+#ifdef REIPAN_SLPS_25544_CHS
+static constexpr int SM_SHOP_PROMO_MOVIE = 26;
+static constexpr int SM_SHOP_ENTRIES = FINDER_SLOT_MAX + 1;
+#else
+static constexpr int SM_SHOP_ENTRIES = FINDER_SLOT_MAX;
+#endif
+
+static const START_MENU_BONUS start_menu_bonus[SM_SHOP_ENTRIES] =     /* rodata 0x358438 */
 {
     { 0,  5000 }, { 0, 10000 }, { 0, 20000 }, { 0, 30000 },
     { 1,  5000 }, { 1, 10000 }, { 1, 20000 }, { 1, 30000 },
@@ -93,6 +100,9 @@ static const START_MENU_BONUS start_menu_bonus[FINDER_SLOT_MAX] =     /* rodata 
     { 2,  3000 }, { 2,  6000 }, { 2,  9000 }, { 2, 12000 },
     { 3,  3000 }, { 3,  9000 },
     { 4,  5000 }, { 4,  5000 },
+#ifdef REIPAN_SLPS_25544_CHS
+    { 4,  5000 },    // SLPS_255.44 0x34f978
+#endif
     { 5, 30000 }, { 5, 30000 }, { 5, 15000 }, { 5,  5000 }, { 5, 10000 },
     { 5, 100000 }, { 5, 100000 },
 };
@@ -125,6 +135,19 @@ static int StartMenuShopHandle(void)
     return BpCtlGetHandleByFileNo(StartMenuShopFile());
 }
 
+static int StartMenuShopSlot(int row)
+{
+    if ((unsigned)row >= SM_SHOP_ENTRIES)
+        return 0;
+#ifdef REIPAN_SLPS_25544_CHS
+    const unsigned state = row == SM_SHOP_PROMO_MOVIE ? GetFinderStateWrk()->PromoMovieState() :
+        GetFinderSlotWrk()->slot[row - (row > SM_SHOP_PROMO_MOVIE)];
+#else
+    const unsigned state = GetFinderSlotWrk()->slot[row];
+#endif
+    return state <= 2 ? state : 0;
+}
+
 // ──────────────────────────────────────────────────────────────────────
 // The cursor bar on the cursor's row, and the preview picture of the
 // cursor entry's group (one of six items, the others hidden), all pinned.
@@ -149,6 +172,8 @@ static void StartMenuOptionDispCsr(void)
     B2dSprFreezePart(handle, SM_SHOP_CSR_ITEM, B2D_PART_X, 0);
     B2dSprFreezePart(handle, SM_SHOP_CSR_ITEM, B2D_PART_Y, 0);
 
+    if ((unsigned)pos >= SM_SHOP_ENTRIES)
+        return;
     group = start_menu_bonus[pos].group;
     for (i = 0; i < SM_SHOP_ROWS; i++) {
         item = B2dCtlFindItem(handle, preview[i]);
@@ -183,7 +208,7 @@ static int StartMenuOptionDrawRowSpr(const B2D_HOOK_ARGS *args)
     csr_kind = id == 0x3f1 || id == 0x3f3 || id == 0x401;
 
     for (i = 0; i < SM_SHOP_ROWS; i++, draw.t2 += SM_SHOP_ROW_DY) {
-        v = GetFinderSlotWrk()->slot[top + i];
+        v = StartMenuShopSlot(top + i);
         if (csr_kind != (i == row)) {
             continue;
         }
@@ -234,9 +259,11 @@ static int StartMenuOptionDrawName(const B2D_HOOK_ARGS *args)
         type = GetLabelSuffixType(name);
         LayoutItemAddPos(pos, name, StartMenuShopFile(), xy);
         no = top + i;
+#ifndef REIPAN_SLPS_25544_CHS
         if (no > SM_SHOP_MSG_SKIP) {
             no++;
         }
+#endif
         PrintMsgPos(SM_SHOP_MSG, no * 2, pos, 0x2d, alpha, 0, type);
     }
     SetDefaultGsDrawState();
@@ -258,7 +285,7 @@ static int StartMenuOptionDrawCost(const B2D_HOOK_ARGS *args)
 
     top = MenuCsrGetTopY(START_MENU_CSR_SHOP);
     row = MenuCsrGetPosY(START_MENU_CSR_SHOP);
-    for (i = 0; i < SM_SHOP_ROWS; i++) {
+    for (i = 0; i < SM_SHOP_ROWS && (unsigned)(top + i) < SM_SHOP_ENTRIES; i++) {
         StartMenuOptionSetRowColor(i == row);
         PrintNumber_N(start_menu_bonus[top + i].cost, 6, xy[0], xy[1] + i * SM_SHOP_ROW_DY,
                       0x2d, alpha, 0, 1, 0);
@@ -365,10 +392,19 @@ static void StartMenuOptionBuyEnd(int result)
 
     if (result == 1) {
         pos = MenuCsrGetPos(START_MENU_CSR_SHOP);
-        GetFinderSlotWrk()->Set(pos, 2);
-        StartMenuOptionApplyBought();
-        IngameWrkSubPoint(start_menu_bonus[pos].cost);
-        start_menu_option_bought = 1;
+        if (StartMenuShopSlot(pos) == 1 && IngameWrkGetPoint() >= (u_int)start_menu_bonus[pos].cost) {
+#ifdef REIPAN_SLPS_25544_CHS
+            if (pos == SM_SHOP_PROMO_MOVIE)
+                GetFinderStateWrk()->SetPromoMovieState(2);
+            else
+                GetFinderSlotWrk()->Set(pos - (pos > SM_SHOP_PROMO_MOVIE), 2);
+#else
+            GetFinderSlotWrk()->Set(pos, 2);
+#endif
+            StartMenuOptionApplyBought();
+            IngameWrkSubPoint(start_menu_bonus[pos].cost);
+            start_menu_option_bought = 1;
+        }
     }
     CmnFadeLayerSwitchItem(9);
 }
@@ -392,9 +428,11 @@ static int StartMenuOptionGetMsgNo(void)
     int pos;
 
     pos = MenuCsrGetPos(START_MENU_CSR_SHOP);
+#ifndef REIPAN_SLPS_25544_CHS
     if (pos > SM_SHOP_MSG_SKIP) {
         pos++;
     }
+#endif
     return pos * 2 + 1;
 }
 
@@ -463,7 +501,7 @@ int init_StartMenu_OptionMain(void)
     BpPlayLabel(BpCtlGetHandleByFileNo(file), "in");
     if (start_menu_option_bar == nullptr) {
         start_menu_option_bar = new B2d_ScrollBar1(file, "slider", "R_tumami");
-        start_menu_option_bar->SetRange(FINDER_SLOT_MAX, SM_SHOP_ROWS);
+        start_menu_option_bar->SetRange(SM_SHOP_ENTRIES, SM_SHOP_ROWS);
     }
     handle = StartMenuShopHandle();
     CmnFadeLayerShowItem(9, handle, SM_SHOP_WIN_ITEM);
@@ -506,7 +544,7 @@ int one_StartMenu_OptionMain(void)
     if (MenuCsrIsMovedSe(START_MENU_CSR_SHOP, SM_SE_MOVE) == 0) {
         if (CheckPadTrgPlaySe((u_short)pad_key[PAD_KEY_OK], -1, 0) != 0) {
             pos = MenuCsrGetPos(START_MENU_CSR_SHOP);
-            v = GetFinderSlotWrk()->slot[pos];
+            v = StartMenuShopSlot(pos);
             if (v == 1 && IngameWrkGetPoint() < (u_int)start_menu_bonus[pos].cost) {
                 SndSePlay(SM_SE_BUZZ, 100, 0x1000, 0, nullptr, 0);
                 CmnFadeLayerSwitchItem(2);
@@ -748,6 +786,10 @@ void FinderSlotOpenByCount(void)
     if (SoulListBonusIsReached(0) != 0) {
         slot->Set(24, 1);
         slot->Set(25, 1);
+#ifdef REIPAN_SLPS_25544_CHS
+        if (GetFinderStateWrk()->PromoMovieState() != 2)
+            GetFinderStateWrk()->SetPromoMovieState(1);
+#endif
     }
     if (SoulListBonusIsReached(1) != 0) {
         slot->Set(30, 1);
@@ -864,19 +906,40 @@ void FINDER_SLOT_WRK::SetSub(int no, int value, int force)
 // clears open (Story_Opening, 56) and two always open (phase 113).
 // ══════════════════════════════════════════════════════════════════════
 
-#define SM_GALLERY_ENTRIES  6
+enum
+{
+    SM_GALLERY_SETTINGS,
+    SM_GALLERY_PROMO_PICTURES,
+#ifdef REIPAN_SLPS_25544_CHS
+    SM_GALLERY_PROMO_MOVIE,
+#endif
+    SM_GALLERY_ENDING_1,
+    SM_GALLERY_ENDING_2,
+    SM_GALLERY_ZERO_1,
+    SM_GALLERY_ZERO_2,
+    SM_GALLERY_ENTRIES
+};
 #define SM_GALLERY_MSG      0x5f    // entry descriptions
 #define SM_GALLERY_WIN_ITEM 0x401   // the window's / fade layer's item in the list layout
 #define SM_GALLERY_BGM      0xfbd   // played while the gallery is up
 #define SM_GALLERY_PIC_A    0x852   // first picture file of entry 0 (also the blank)
 #define SM_GALLERY_PIC_B    0x867   // first picture file of entry 1
 
-// Items of the list layout per entry (rodata 0x358650..0x3586a0).
+// Items of the list layout per entry.
+#ifdef REIPAN_SLPS_25544_CHS
+// SLPS_255.44 0x34fbb0..0x34fbfc includes a separate promotional film row.
+static const short sm_gallery_entry_csr[SM_GALLERY_ENTRIES] = { 0x3f2, 0x3f4, 0x3fc, 0x3fe, 0x402, 0x3f8, 0x3fa };
+static const short sm_gallery_entry[SM_GALLERY_ENTRIES]     = { 0x3f1, 0x3f3, 0x3fb, 0x3fd, 0x434, 0x3f7, 0x3f9 };
+static const short sm_gallery_lock_csr[SM_GALLERY_ENTRIES]  = { 0x418, 0x41a, 0x422, 0x424, 0x432, 0x41e, 0x420 };
+static const short sm_gallery_lock[SM_GALLERY_ENTRIES]      = { 0x428, 0x429, 0x42d, 0x42e, 0x430, 0x42b, 0x42c };
+static const short sm_gallery_mark[SM_GALLERY_ENTRIES]      = { 0x41b, 0x41d, 0x417, 0x419, 0x412, 0x421, 0x423 };
+#else
 static const short sm_gallery_entry_csr[SM_GALLERY_ENTRIES] = { 0x3f2, 0x3f4, 0x3fe, 0x402, 0x3f8, 0x3fa };  // 0x358650: on the cursor
 static const short sm_gallery_entry[SM_GALLERY_ENTRIES]     = { 0x3f1, 0x3f3, 0x3fd, 0x434, 0x3f7, 0x3f9 };  // 0x358660: elsewhere
 static const short sm_gallery_lock_csr[SM_GALLERY_ENTRIES]  = { 0x418, 0x41a, 0x424, 0x432, 0x41e, 0x420 };  // 0x358670
 static const short sm_gallery_lock[SM_GALLERY_ENTRIES]      = { 0x428, 0x429, 0x42e, 0x430, 0x42b, 0x42c };  // 0x358680
 static const short sm_gallery_mark[SM_GALLERY_ENTRIES]      = { 0x41b, 0x41d, 0x419, 0x412, 0x421, 0x423 };  // 0x358690
+#endif
 
 static int       start_menu_gallery_page;       // sbss 0x373160 (gp-0x390): viewer page
 static int       start_menu_gallery_pages;      // sbss 0x373164 (gp-0x38c): viewer page count
@@ -901,11 +964,8 @@ static int StartMenuViewFile(void)
 
 static void StartMenuGalleryPicRelease(void)
 {
-    MENU_PIC *pic = start_menu_gallery_pic;
-
-    if (pic != nullptr) {
-        delete pic;
-    }
+    delete start_menu_gallery_pic;
+    start_menu_gallery_pic = nullptr;
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -982,18 +1042,22 @@ int StartMenuGalleryIsOpen(int no)
     int               v;
 
     switch (no) {
-    case 0:
+    case SM_GALLERY_SETTINGS:
         v = GetFinderSlotWrk()->slot[24];
         break;
-    case 1:
+    case SM_GALLERY_PROMO_PICTURES:
         v = GetFinderSlotWrk()->slot[25];
         break;
-    case 2:
-    case 3:
+#ifdef REIPAN_SLPS_25544_CHS
+    case SM_GALLERY_PROMO_MOVIE:
+        return GetFinderStateWrk()->PromoMovieState() == 2;
+#endif
+    case SM_GALLERY_ENDING_1:
+    case SM_GALLERY_ENDING_2:
         state = GetFinderStateWrk();
-        return (no == 2 ? state->_04 : state->_08) != 0;
-    case 4:
-    case 5:
+        return (no == SM_GALLERY_ENDING_1 ? state->_04 : state->_08) != 0;
+    case SM_GALLERY_ZERO_1:
+    case SM_GALLERY_ZERO_2:
         return 1;
     default:
         return 0;
@@ -1075,6 +1139,14 @@ static int StartMenuGalleryDrawEntry(const B2D_HOOK_ARGS *args)
         }
     }
     if (draw) {
+#ifdef REIPAN_SLPS_25544_CHS
+        if (id == sm_gallery_entry_csr[SM_GALLERY_ENDING_2]) {
+            // Its 206-pixel atlas strip also contains the adjacent "Settings" glyphs.
+            B2D_HOOK_ARGS cropped = *args;
+            cropped.a3 = 128;
+            return B2dDrawSpriteDirect(&cropped);
+        }
+#endif
         B2dDrawSpriteDirect(args);
     }
     return 0;
@@ -1112,11 +1184,13 @@ static int StartMenuGalleryDrawLock(const B2D_HOOK_ARGS *args)
             on = 0;
         }
     }
-    if (draw) {
+    if (draw && args->a1 > 0 && args->a2 > 0) {
+        const float sx = (float)(xy[6] - xy[0]) / (int)args->a1;
+        const float sy = (float)(xy[3] - xy[1]) / (int)args->a2;
         B2dDrawSpriteByName(BpCtlGetHandleByFileNo(StartMenuGalleryFile()), on ? "R_lockon" : "R_lockoff",
                             xy[0], xy[1], rgb & 0xff, (rgb >> 8) & 0xff, (rgb >> 16) & 0xff,
                             (float)(int)args->stack[2] * (1.0f / 128.0f),   /* sdata 0x3702cc */
-                            0.0f, 1.0f, 1.0f, 0.0f, 0.0f);
+                            0.0f, sx, sy, 0.0f, 0.0f);
     }
     return 0;
 }
@@ -1243,6 +1317,15 @@ void StartMenuGallerySetHooks(void)
     int i;
 
     handle = BpCtlGetHandleByFileNo(StartMenuGalleryFile());
+#ifdef REIPAN_SLPS_25544_CHS
+    // The PS2 put these source sprites outside its viewport. Keep them
+    // available to the row hooks while suppressing their standalone draws.
+    static constexpr int gallery_templates[] = { 0x3e9, 0x3eb, 0x3ec, 0x3ef, 0x3f6 };
+    for (int id : gallery_templates) {
+        if (B2D_ITEM *item = B2dCtlFindItem(handle, id))
+            B2dSprSetDisp(item, 0);
+    }
+#endif
     for (i = 0; i < SM_GALLERY_ENTRIES; i++) {
         B2dCtlSetItemHook(B2dCtlFindItem(handle, sm_gallery_entry_csr[i]), &entry_hook);
         B2dCtlSetItemHook(B2dCtlFindItem(handle, sm_gallery_entry[i]), &entry_hook);
@@ -1303,9 +1386,11 @@ static int StartMenuGalleryGetMsgNo(void)
     int pos;
 
     pos = MenuCsrGetPos(START_MENU_CSR_GALLERY);
+#ifndef REIPAN_SLPS_25544_CHS
     if (pos > 1) {
         pos++;
     }
+#endif
     return pos;
 }
 
@@ -1349,8 +1434,11 @@ int one_StartMenu_GalleryMain(void)
     int next;
 
     // PC: the mouse. Each entry is an item of the layout.
-    for (int i = 0; i < 6; i++)
-        MenuMouseCsrId(START_MENU_CSR_GALLERY, i, BpCtlGetHandleByFileNo(StartMenuGalleryFile()), sm_gallery_entry[i]);
+    const int handle = BpCtlGetHandleByFileNo(StartMenuGalleryFile());
+    for (int i = 0; i < SM_GALLERY_ENTRIES; i++) {
+        if (!MenuMouseCsrId(START_MENU_CSR_GALLERY, i, handle, sm_gallery_entry[i]))
+            MenuMouseCsrId(START_MENU_CSR_GALLERY, i, handle, sm_gallery_entry_csr[i]);
+    }
     MenuCsrUpdate(START_MENU_CSR_GALLERY, 0);
     start_menu_sel_win->StartMsg(SM_GALLERY_MSG, StartMenuGalleryGetMsgNo(), 1);
     pos = MenuCsrGetPos(START_MENU_CSR_GALLERY);
@@ -1365,12 +1453,15 @@ int one_StartMenu_GalleryMain(void)
         SndSePlay(SM_SE_OK, 100, 0x1000, 0, nullptr, 0);
         start_menu_gallery_csr = pos;
         switch (pos) {
-        case 0:
-        case 1:
+        case SM_GALLERY_SETTINGS:
+        case SM_GALLERY_PROMO_PICTURES:
             next = 0x70;
             break;
-        case 2:
-        case 3:
+#ifdef REIPAN_SLPS_25544_CHS
+        case SM_GALLERY_PROMO_MOVIE:
+#endif
+        case SM_GALLERY_ENDING_1:
+        case SM_GALLERY_ENDING_2:
             next = 0x38;
             break;
         default:
@@ -1519,7 +1610,7 @@ int init_StartMenu_GalleryZero(void)
 
     leaf = GetGPhaseCtrl()->leaf;
     if (leaf->state_cnt == 0) {
-        start_menu_gallery_zero1 = MenuCsrGetPos(START_MENU_CSR_GALLERY) == 4;
+        start_menu_gallery_zero1 = MenuCsrGetPos(START_MENU_CSR_GALLERY) == SM_GALLERY_ZERO_1;
         BpCtlLoadReq(GetSysWrk()->GetLanguage() + START_MENU_FADE_FILE, nullptr);
         BpCtlLoadReq(GetSysWrk()->GetLanguage() + START_MENU_ZERO2_FILE, nullptr);
         GetGPhaseCtrl()->leaf->state_cnt = 1;
@@ -1574,7 +1665,7 @@ int end_StartMenu_GalleryZero(void)
     CmnFadeLayerTermItem();
     BpCtlRelease(BpCtlGetHandleByFileNo(GetSysWrk()->GetLanguage() + START_MENU_FADE_FILE));
     BpCtlRelease(BpCtlGetHandleByFileNo(GetSysWrk()->GetLanguage() + START_MENU_ZERO2_FILE));
-    MenuCsrSetPos(START_MENU_CSR_GALLERY, start_menu_gallery_zero1 != 0 ? 4 : 5);
+    MenuCsrSetPos(START_MENU_CSR_GALLERY, start_menu_gallery_zero1 != 0 ? SM_GALLERY_ZERO_1 : SM_GALLERY_ZERO_2);
     return 1;
 }
 
@@ -1601,13 +1692,18 @@ int init_Story_Opening(void)
 
 int one_Story_Opening(void)
 {
-    static const int movie_tbl[2][2] = { { 2, 0x15 }, { 3, 0x16 } };    // built on the stack: {gallery entry, movie}
+    static const int movie_tbl[][2] = {
+#ifdef REIPAN_SLPS_25544_CHS
+        { SM_GALLERY_PROMO_MOVIE, 0x17 },    // SLPS_255.44 0x34fb98
+#endif
+        { SM_GALLERY_ENDING_1, 0x15 }, { SM_GALLERY_ENDING_2, 0x16 }
+    };
     int movie;
     int i;
 
     if (GetGPhaseCtrl()->leaf->state_cnt == 0) {
         movie = 0x15;
-        for (i = 0; i < 2; i++) {
+        for (i = 0; i < (int)(sizeof(movie_tbl) / sizeof(movie_tbl[0])); i++) {
             if (start_menu_gallery_csr == movie_tbl[i][0]) {
                 movie = movie_tbl[i][1];
                 break;
@@ -1651,12 +1747,12 @@ static int start_menu_loaded;           // sbss 0x37317c (gp-0x374): pre_StartMe
 static void StartMenuCsrInit(void)
 {
     MenuCsrInitWithFilter(StartMenuTopCsrFilter, START_MENU_CSR_TOP, 1, 7, 0);
-    if (GetFinderStateWrk()->_0c == 0) {
+    if (GetFinderStateWrk()->ClearSaveFlag() == 0) {
         MenuCsrSetPos(START_MENU_CSR_TOP, 1);
     }
     MenuCsrInitWithFilter(StartMenuDiffCsrFilter, START_MENU_CSR_DIFF, 1, 4, 0);
     MenuCsrInitTbl(0x6c, 0, 0);
-    MenuCsrInit(START_MENU_CSR_SHOP, 1, FINDER_SLOT_MAX, 0);
+    MenuCsrInit(START_MENU_CSR_SHOP, 1, SM_SHOP_ENTRIES, 0);
     MenuCsrSetViewX(START_MENU_CSR_SHOP, 1, 0);
     MenuCsrSetViewY(START_MENU_CSR_SHOP, SM_SHOP_ROWS, 0);
     MenuCsrInit(START_MENU_CSR_GALLERY, 1, SM_GALLERY_ENTRIES, 0);

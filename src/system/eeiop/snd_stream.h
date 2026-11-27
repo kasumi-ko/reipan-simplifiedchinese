@@ -158,6 +158,7 @@ typedef struct
     /* 0x0b4 */ int          offset;    // where playback ended (sectors)
     /* 0x0b8 */ float        play_spd;
     /* 0x0bc */ int          file_no;
+                unsigned int header_size;
 } SND_STREAM_WRK;                       /* 0xc0 */
 
 static_assert(offsetof(SND_STREAM_WRK, s) == 0x1c, "SND_STREAM_WRK.s");

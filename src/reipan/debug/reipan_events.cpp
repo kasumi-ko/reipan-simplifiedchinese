@@ -2430,7 +2430,17 @@ std::string DescribePlace(const Place &place)
 
 const char *ChapterLabel(int chapter)
 {
+#ifdef REIPAN_SLPS_25544_CHS
+    static constexpr const char *labels[kChapterCount] = {
+        "序章", "一之刻 征兆", "二之刻 沉睡之家", "三之刻 镇魂歌",
+        "四之刻 祸梦", "五之刻 消失", "六之刻 人柱", "七之刻 牢狱",
+        "八之刻 虚梦", "九之刻 破戒", "十之刻 刺魂之仪", "十一之刻 终途",
+        "十二之刻 戒之仪", "十三之刻 刺青之声", "终之刻 涯之渊",
+    };
+    return chapter >= 0 && chapter < kChapterCount ? labels[chapter] : "?";
+#else
     return chapter >= 0 && chapter < kChapterCount ? kChapterNames[chapter] : "?";
+#endif
 }
 
 int CurrentChapter()

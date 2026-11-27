@@ -80,6 +80,8 @@ void ReiPan_InputShutdown(void);
 // the digital stick ramps by one step.  Call once per poll before reading
 // button/stick state — the ramp advances per call, not per wall-clock tick.
 void ReiPan_InputUpdate(void);
+void ReiPan_InputQueueKeyDown(int scancode);
+void ReiPan_InputClearKeyboard(void);
 
 // 1 if logical button `index` (0..15) is currently held by any of its sources.
 int ReiPan_InputButtonHeld(int index);
