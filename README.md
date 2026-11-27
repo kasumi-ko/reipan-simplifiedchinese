@@ -1,6 +1,6 @@
-# ReiPan-SimplifiedChinese
+# ReiPan 简体中文版
 
-ReiPan-SimplifiedChinese 是《零～刺青之声～ / Fatal Frame III: The Tormented》的 PS2 至 PC 原生移植项目。本仓库基于 Mikompilation 的 ReiPan，为 Windows 提供日版游戏的简体中文适配。[上游仓库](https://github.com/Mikompilation/ReiPan)
+ReiPan 是《零～刺青之声～ / Fatal Frame III: The Tormented》的 PS2 至 PC 原生移植项目。本仓库基于 Mikompilation 的 ReiPan，为 Windows 提供日版游戏的简体中文适配。[上游仓库](https://github.com/Mikompilation/ReiPan)
 
 ## 适用版本与维护状态
 
