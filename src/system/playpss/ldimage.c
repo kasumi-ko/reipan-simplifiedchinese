@@ -87,7 +87,7 @@ u_int *setLoadImageTags(u_int *tags, sceIpuRGB32 *image, int x, int y,
                         int width, int height, int vram_adrs)
 {
     // PC: the one place the movie player says where the picture goes.
-    ReiPan_VideoBegin(vram_adrs);
+    ReiPan_VideoBegin(vram_adrs, 10, 9);
 
     return setLoadImageTagsYX(tags, image, LDIMAGE_MB_BYTES, x, y, width, height, vram_adrs);
 }
@@ -435,14 +435,9 @@ static int setLoadTexTagsYX(u_int *tags, void *image, int skip, int x, int y,
 // FF3-only: stride one macroblock, as setLoadImageTags. Caller
 // playPssSetTexPacket, on the first frame of a movie.
 // FF3 0x00273d08
-// callcheck: ReiPan_VideoBegin (PC: arms the direct picture path)
 
 int setLoadTexTags(u_int *tags, sceIpuRGB32 *image, int x, int y,
                    int width, int height, int tbp)
 {
-    // PC: where the picture goes; the renderer serves TEX0 TBP0 == tbp from
-    // the decoder's frame from now on.
-    ReiPan_VideoBegin(tbp);
-
     return setLoadTexTagsYX(tags, image, LDIMAGE_MB_BYTES, x, y, width, height, tbp);
 }

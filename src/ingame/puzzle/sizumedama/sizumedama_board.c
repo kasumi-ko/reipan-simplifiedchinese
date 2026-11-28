@@ -20,6 +20,12 @@
 #define SIZUME_VOICE_PRIORITY   0xd
 #define SIZUME_FADE_TIME        10
 
+static bool UsesSubtitleStream(const SIZUME_BOARD &board)
+{
+    return board.solved != 0 &&
+           SubTitleGetStreamFile(SIZUME_SUBTITLE_KIND, SIZUME_SUBTITLE_NO) == board.def->clear.file;
+}
+
 // The pedestals empty, every stone free, then the definition's stones put.
 // FF3 0x0024cad8. FF3 0x0024ca90 is the constructor's other copy (no
 // callers): the same head, then a jump into this body at 0x24cb20.
@@ -111,8 +117,8 @@ const SIZUME_VOICE *SIZUME_BOARD::GetVoice()
 }
 
 // The voice of GetVoice, when its file exists: the map BGM ducked and the
-// looping sounds paused, then the clip as a stream -- or, solved, the whole
-// recording through the subtitle player, which runs its own stream.
+// looping sounds paused. Use the subtitle player when the disc lists the
+// clear recording there. Other discs can play it directly from the board.
 // FF3 0x0024cd50.
 
 void SIZUME_BOARD::PlayVoice()
@@ -127,15 +133,15 @@ void SIZUME_BOARD::PlayVoice()
 
     map_bgmFadeOut(3, 0);
     SndBufAllPauseLoopSnd();
-    if (solved == 0)
-    {
-        voice = StreamAutoPlay(file, file + 1, SIZUME_VOICE_PRIORITY, 1, 0,
-                               SndConvVolume(SIZUME_VOICE_VOL), 3, nullptr);
-    }
-    else
+    if (UsesSubtitleStream(*this))
     {
         SubTitleReq(SIZUME_SUBTITLE_KIND, SIZUME_SUBTITLE_NO);
         voice = SIZUME_VOICE_SUBTITLE;
+    }
+    else
+    {
+        voice = StreamAutoPlay(file, file + 1, SIZUME_VOICE_PRIORITY, 1, 0,
+                               SndConvVolume(SIZUME_VOICE_VOL), 3, nullptr);
     }
 }
 
@@ -145,19 +151,22 @@ int SIZUME_BOARD::IsPlaying()
 {
     if (voice < 0)
         return 0;
-    if (solved == 0)
-        return StreamAutoIsPlaying(voice);
-    return SubTitleIsEnd() == 0;
+    if (UsesSubtitleStream(*this))
+        return SubTitleIsEnd() == 0;
+    return StreamAutoIsPlaying(voice);
 }
 
 // FF3 0x0024ce68.
 
 void SIZUME_BOARD::StopVoice()
 {
-    if (solved == 0)
-        StreamAutoFadeOut(voice, SIZUME_FADE_TIME);
-    else
-        SubTitleStop();
+    if (voice >= 0)
+    {
+        if (UsesSubtitleStream(*this))
+            SubTitleStop();
+        else
+            StreamAutoFadeOut(voice, SIZUME_FADE_TIME);
+    }
     voice = -1;
     map_bgmFadeIn(SIZUME_FADE_TIME);
     SndBufAllRestartLoopSnd();

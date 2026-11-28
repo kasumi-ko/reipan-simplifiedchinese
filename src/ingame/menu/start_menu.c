@@ -1281,6 +1281,14 @@ static void StartMenuGalleryViewSetHooks(void)
     int i;
 
     handle = BpCtlGetHandleByFileNo(StartMenuViewFile());
+#ifdef REIPAN_SLPS_25544_CHS
+    // The viewer's digit templates sit at x=641, where widescreen can show
+    // them stacked. StartMenuGalleryDrawPage draws the visible page numbers.
+    for (int id = 0x3ef; id <= 0x3f8; ++id) {
+        if (B2D_ITEM *item = B2dCtlFindItem(handle, id))
+            B2dSprSetDisp(item, 0);
+    }
+#endif
     for (i = 0; i < 2; i++) {
         B2dCtlSetItemHook(B2dCtlFindItem(handle, linear_items[i]), &sm_hook_linear);
     }

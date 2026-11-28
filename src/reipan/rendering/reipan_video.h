@@ -25,13 +25,10 @@
  *  memory before it ends.
  *
  *  WHAT HAPPENS INSTEAD.  The decoder publishes its linear RGBA frame here,
- *  and the renderer serves any TEX0 naming the movie's GS block from one
- *  persistent texture that this frame is uploaded into.  The picture never
- *  enters emulated GS memory at all, so there is nothing to swizzle, nothing
- *  to hash and nothing to leak; the draw code above it is untouched, and the
- *  UVs it wrote against a 1024x512 page still land where they did, because the
- *  picture is uploaded into that page's top-left corner exactly as the
- *  transfer chain placed it.
+ *  and the renderer matches the GS address and texture page dimensions.
+ *  Each page shape has a persistent texture. The picture is uploaded into
+ *  its top-left corner so the original UVs work for both full-screen and
+ *  in-world playback.
  *
  *  The publisher (sdk/libmpeg_video.cpp) and the consumer (the renderer) are
  *  the same thread in NTSC and two threads in PAL, where playpss.c runs the
@@ -48,11 +45,8 @@
 extern "C" {
 #endif
 
-/* Arm the override: from here until ReiPan_VideoEnd(), a TEX0 whose TBP0 is
- * `gs_addr` is answered with the published picture rather than with whatever
- * emulated GS memory holds.  Called by setLoadImageTags(), the one function
- * that is told where the picture was going. */
-void ReiPan_VideoBegin(int gs_addr);
+/* Register the GS address and the texture page used by the movie's draw. */
+void ReiPan_VideoBegin(int gs_addr, int width_log2, int height_log2);
 
 /* Disarm it.  Called when the decoder is created or reset -- i.e. at both ends
  * of a movie -- so nothing is overridden between films. */
@@ -61,7 +55,7 @@ void ReiPan_VideoEnd(void);
 /* Armed?  ldimage.c's loadImage() skips the whole transfer chain while this is
  * true, and the renderer uses it to decide whether a TEX0 is the movie's. */
 int  ReiPan_VideoIsLive(void);
-int  ReiPan_VideoGsAddr(void);
+int  ReiPan_VideoMatchesTexture(int gs_addr, int width_log2, int height_log2);
 /* Changes once per newly armed movie, including reuse of its GS address. */
 unsigned int ReiPan_VideoGeneration(void);
 

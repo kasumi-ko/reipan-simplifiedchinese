@@ -191,6 +191,126 @@ static u_long BpTexSendTim2(void *tim2, int tbp)
     return pic->GsTex0;
 }
 
+#ifdef REIPAN_SLPS_25544_CHS
+static const u_char *GalleryPaletteColor(const u_char *palette, int index)
+{
+    const int clut_index = (index & 0xe7) | ((index & 8) << 1) | ((index & 16) >> 1);
+    return palette + 4 * clut_index;
+}
+
+// The Chinese gallery atlas has duplicate headings baked into its upper
+// right background tile. Refill the text and its outline with nearby colors
+// from that tile's own palette, leaving the other sprites and CLUT intact.
+static void RestoreGalleryBackground(void *tim2, int size)
+{
+    constexpr int width = 512;
+    constexpr int image_size = width * width;
+    constexpr int palette_size = 256 * 4;
+    constexpr int picture_offset = 16;
+    constexpr int image_offset = picture_offset + sizeof(TIM2_PICTUREHEADER);
+    auto *file = static_cast<u_char *>(tim2);
+    if (size < image_offset + image_size + palette_size ||
+        memcmp(file, "TIM2", 4) != 0 || file[5] != 0)
+        return;
+
+    const TIM2_PICTUREHEADER *pic = Tim2GetFirstPicture(tim2);
+    if (pic->HeaderSize != sizeof(*pic) || pic->ImageSize != image_size ||
+        pic->ImageWidth != width || pic->ImageHeight != width ||
+        pic->ClutSize != palette_size || pic->ClutColors != 256 ||
+        pic->ImageType != 5 || pic->ClutType != 3)
+        return;
+
+    u_char *image = file + image_offset;
+    const u_char *palette = image + image_size;
+    constexpr u_char outline[] = {67, 66, 51, 128};
+    constexpr u_char lettering[] = {215, 221, 189, 128};
+    if (memcmp(GalleryPaletteColor(palette, 109), outline, sizeof(outline)) != 0 ||
+        memcmp(GalleryPaletteColor(palette, 251), lettering, sizeof(lettering)) != 0)
+        return;
+
+    constexpr u_char ink_indices[] = {109, 210, 222, 227, 233, 243, 247, 251};
+    bool ink[256] = {};
+    for (u_char index : ink_indices)
+        ink[index] = true;
+
+    constexpr int margin = 2;
+    constexpr int headings[][4] = {{15, 112, 73, 143}, {15, 155, 122, 190}};
+    constexpr int max_columns = headings[1][2] - headings[1][0] + 2 * margin;
+    constexpr int max_rows = headings[1][3] - headings[1][1] + 2 * margin;
+    constexpr int directions[][2] = {
+        {-1, 0}, {1, 0}, {0, -1}, {0, 1}, {-1, -1}, {1, -1}, {-1, 1}, {1, 1},
+    };
+    for (const auto &box : headings)
+    {
+        const int left = box[0] - margin;
+        const int top = box[1] - margin;
+        const int columns = box[2] + margin - left;
+        const int rows = box[3] + margin - top;
+        bool masked[max_rows][max_columns] = {};
+        for (int y = margin; y < rows - margin; ++y)
+            for (int x = margin; x < columns - margin; ++x)
+                if (ink[image[(top + y) * width + left + x]])
+                    for (int dy = -margin; dy <= margin; ++dy)
+                        for (int dx = -margin; dx <= margin; ++dx)
+                            masked[y + dy][x + dx] = true;
+
+        bool background[256] = {};
+        for (int y = 0; y < rows; ++y)
+            for (int x = 0; x < columns; ++x)
+                if (!masked[y][x])
+                    background[image[(top + y) * width + left + x]] = true;
+
+        for (int y = 0; y < rows; ++y)
+        {
+            for (int x = 0; x < columns; ++x)
+            {
+                if (!masked[y][x])
+                    continue;
+
+                float sum[4] = {};
+                float total_weight = 0.0f;
+                for (const auto &dir : directions)
+                {
+                    int sx = x;
+                    int sy = y;
+                    do {
+                        sx += dir[0];
+                        sy += dir[1];
+                    } while (sx >= 0 && sx < columns && sy >= 0 && sy < rows && masked[sy][sx]);
+
+                    const float weight = 1.0f / ((sx - x) * (sx - x) + (sy - y) * (sy - y));
+                    const u_char *sample = GalleryPaletteColor(palette, image[(top + sy) * width + left + sx]);
+                    for (int channel = 0; channel < 4; ++channel)
+                        sum[channel] += weight * sample[channel];
+                    total_weight += weight;
+                }
+
+                float nearest_distance = 1.0e9f;
+                int nearest_index = image[(top + y) * width + left + x];
+                for (int index = 0; index < 256; ++index)
+                {
+                    if (!background[index] || ink[index])
+                        continue;
+                    const u_char *color = GalleryPaletteColor(palette, index);
+                    float distance = 0.0f;
+                    for (int channel = 0; channel < 4; ++channel)
+                    {
+                        const float diff = sum[channel] - total_weight * color[channel];
+                        distance += diff * diff;
+                    }
+                    if (distance < nearest_distance)
+                    {
+                        nearest_distance = distance;
+                        nearest_index = index;
+                    }
+                }
+                image[(top + y) * width + left + x] = (u_char)nearest_index;
+            }
+        }
+    }
+}
+#endif
+
 // ──────────────────────────────────────────────────────────────────────
 // B2dFile's texture-load hook: a0 handle, a1 texture number, a2 file name
 // (without ".tm2"). Finds "<a2>.tm2" in the pack being registered, gives it
@@ -220,6 +340,11 @@ int BpTexLoadFunc(const B2D_HOOK_ARGS *args)
         printf("BpTexLoadFunc: no entry or no %s\n", name);
         return 0;
     }
+#ifdef REIPAN_SLPS_25544_CHS
+    if (strcmp(name, "gallary_top01.tm2") == 0)
+        RestoreGalleryBackground(tim2, PhfFindFileSize(BpGetLoadPack(), name));
+#endif
+
     ent->tim2 = tim2;
     ent->tbp  = work->tbp;
 

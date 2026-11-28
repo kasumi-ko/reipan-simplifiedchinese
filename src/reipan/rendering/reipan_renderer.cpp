@@ -5786,26 +5786,16 @@ TextureEntry *CreatePendingTexture(uint64_t hash, int width, int height,
  * short version is that a movie's GS block holds different pixels every frame,
  * and the ordinary path keys a host texture on the hash of its GS content --
  * so a cutscene creates one texture per frame in a cache that never evicts.
- * Here the decoder's own linear RGBA is uploaded into one persistent texture
- * instead, and every TEX0 naming the movie's block is answered with it.
- *
- * The texture is allocated at the size the TEX0 declares (1 << TW by 1 << TH,
- * a 1024x512 page for both of the game's two players) and the picture goes
- * into its top-left corner, because that is where the transfer chain put it --
- * so movie.c's 0..640 x 0..448 sprite UVs and CMovieRoom::Draw()'s texel
- * rectangle both still land exactly where they did.
- *
- * The hash is a constant rather than content-derived: nothing else may share
- * the entry, and the value has to be stable so CommitTextureUploads() can find
- * it again.  "REIPANVD" in ASCII, which no GS region will hash to.
+ * The decoder uploads into a persistent texture keyed by the movie's page
+ * dimensions. Each frame starts at the page origin, matching the original
+ * transfer and keeping the existing texel coordinates.
  */
-constexpr uint64_t kVideoTextureHash = 0x4D494F50414E5644ull;
-constexpr int kVideoTextureWidthLog2 = 10;
-constexpr int kVideoTextureHeightLog2 = 9;
+constexpr uint64_t kVideoTextureHashPrefix = 0x4D494F50414E5600ull;
+constexpr uint64_t kVideoTextureHashMask = ~0xffull;
 
 bool IsVideoTex0(const sceGsTex0 *tex0)
 {
-    if (tex0 == nullptr || ReiPan_VideoIsLive() == 0)
+    if (tex0 == nullptr)
     {
         return false;
     }
@@ -5815,18 +5805,17 @@ bool IsVideoTex0(const sceGsTex0 *tex0)
     {
         return false;
     }
-    return (int)tex0->TBP0 == ReiPan_VideoGsAddr() &&
-           tex0->TW == kVideoTextureWidthLog2 &&
-           tex0->TH == kVideoTextureHeightLog2;
+    return ReiPan_VideoMatchesTexture(tex0->TBP0, tex0->TW, tex0->TH) != 0;
 }
 
-TextureEntry *GetVideoTexture()
+TextureEntry *GetVideoTexture(const sceGsTex0 &tex0)
 {
-    constexpr int want_w = 1 << kVideoTextureWidthLog2;
-    constexpr int want_h = 1 << kVideoTextureHeightLog2;
+    const int want_w = 1 << tex0.TW;
+    const int want_h = 1 << tex0.TH;
+    const uint64_t hash = kVideoTextureHashPrefix | (uint64_t(tex0.TW) << 4) | tex0.TH;
 
     bool fresh_texture = false;
-    auto entry = g_texture_cache.find(kVideoTextureHash);
+    auto entry = g_texture_cache.find(hash);
 
     if (entry == g_texture_cache.end())
     {
@@ -5836,10 +5825,10 @@ TextureEntry *GetVideoTexture()
             return nullptr;
         }
 
-        TextureEntry fresh{texture, want_w, want_h, kVideoTextureHash, false};
+        TextureEntry fresh{texture, want_w, want_h, hash, false};
         try
         {
-            entry = g_texture_cache.emplace(kVideoTextureHash, fresh).first;
+            entry = g_texture_cache.emplace(hash, fresh).first;
 
             fresh_texture = true;
         }
@@ -5862,7 +5851,7 @@ TextureEntry *GetVideoTexture()
         {
             // A reused texture still holds the previous movie's last frame.
             PendingTextureUpload blank{};
-            blank.hash = kVideoTextureHash;
+            blank.hash = hash;
             blank.texture = entry->second.texture;
             blank.width = (Uint32)want_w;
             blank.height = (Uint32)want_h;
@@ -5893,7 +5882,7 @@ TextureEntry *GetVideoTexture()
         rgba.size() == (size_t)frame_w * (size_t)frame_h * 4u)
     {
         PendingTextureUpload pending{};
-        pending.hash = kVideoTextureHash;
+        pending.hash = hash;
         pending.texture = entry->second.texture;
         pending.width = (Uint32)frame_w;
         pending.height = (Uint32)frame_h;
@@ -6092,7 +6081,7 @@ TextureUploadResult UploadPendingTextures(SDL_GPUCommandBuffer *cmd)
  */
 bool PendingUploadKeepsPreviousFrame(const PendingTextureUpload &pending)
 {
-    return pending.hash == kVideoTextureHash;
+    return (pending.hash & kVideoTextureHashMask) == kVideoTextureHashPrefix;
 }
 
 void FallbackUnrecordedPendingTextures(const TextureUploadResult &result)
@@ -10475,7 +10464,7 @@ TextureEntry *GetTexture(const sceGsTex0 *tex0)
      * callers already do with one. */
     if (IsVideoTex0(tex0))
     {
-        return GetVideoTexture();
+        return GetVideoTexture(*tex0);
     }
 
     tex0_value = ReadTex0Value(tex0);

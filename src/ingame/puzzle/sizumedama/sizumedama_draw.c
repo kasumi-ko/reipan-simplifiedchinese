@@ -6,6 +6,11 @@
  * ======================================================================== */
 #include "ingame/puzzle/sizumedama/sizumedama_draw.h"
 
+#ifdef REIPAN_SLPS_25544_CHS
+#include "graphics/graph2d/message.h"
+#include "reipan/io/reipan_menu_mouse.h"
+#endif
+
 #include "graphics/motion/anicode.h"                    // B2D_HOOK_REC, B2dSetHookList, SetDefaultGsDrawState
 #include "ingame/menu/menu_bg.h"                        // B2dHookPrintMsgLine
 #include "ingame/puzzle/puzzle.h"                       // PuzzleGetLayoutFile
@@ -226,6 +231,31 @@ static int SizumeDrawJimakuItem(const B2D_HOOK_ARGS *args)
     return 0;
 }
 
+#ifdef REIPAN_SLPS_25544_CHS
+static int SizumeDrawStopGuide(const B2D_HOOK_ARGS *args)
+{
+    constexpr int key_strip = 40;
+    constexpr int first_row_height = 34;
+    if (args->a3 <= key_strip || args->t0 < first_row_height || (args->stack[3] & 0x3000))
+        return B2dDrawSpriteDirect(args);
+
+    const int text_x = (key_strip * args->t3 + 512) / 1024;
+    B2D_HOOK_ARGS lettering = *args;
+    lettering.a1 += key_strip;
+    lettering.a3 -= key_strip;
+    lettering.t0 = first_row_height;
+    lettering.t1 += text_x;
+    B2dDrawSpriteDirect(&lettering);
+
+    const int key_h = (20 * args->stack[0] + 512) / 1024;
+    const int key_y = (10 * args->stack[0] + 512) / 1024;
+    MsgDrawButtonPrompt(REIPAN_MENU_CROSS, (int)args->t1, (int)args->t2 + key_y,
+                        text_x - 3, key_h, (int)args->stack[1]);
+    SetDefaultGsDrawState();
+    return 0;
+}
+#endif
+
 // data 0x361fb8 (FF3 copies the list to the stack before passing it).
 static const B2D_HOOK_REC sizume_hooks[] =
 {
@@ -238,6 +268,9 @@ static const B2D_HOOK_REC sizume_hooks[] =
     { SizumeDrawJimakuItem,  0, 0x40b, nullptr },
     { SizumeDrawJimakuItem,  0, 0x400, nullptr },
     { SizumeDrawJimakuItem,  0, 0x40c, nullptr },
+#ifdef REIPAN_SLPS_25544_CHS
+    { SizumeDrawStopGuide,   0, 0,     "R cap_3" },
+#endif
     { nullptr,              -1, -1,    nullptr },
 };
 

@@ -36,27 +36,31 @@ int  g_published_w = 0;
 int  g_published_h = 0;
 bool g_has_frame   = false;
 
-/* The GS block the movie's TEX0 names, or -1 when no movie is up.
+/* The GS block and page size the movie's TEX0 names, or -1 when idle.
  *
  * Atomic and deliberately outside the lock: the renderer asks whether a TEX0
  * is the movie's once for every textured draw in the game, so this is on the
  * hot path of a frame that has nothing to do with movies. */
-std::atomic<int> g_gs_addr{-1};
+std::atomic<int> g_texture_page{-1};
 std::atomic<unsigned int> g_generation{0};
+
+int PackTexturePage(int gs_addr, int width_log2, int height_log2)
+{
+    return gs_addr | (width_log2 << 14) | (height_log2 << 18);
+}
 }
 
 extern "C" {
 
-void ReiPan_VideoBegin(int gs_addr)
+void ReiPan_VideoBegin(int gs_addr, int width_log2, int height_log2)
 {
-    if (gs_addr < 0)
+    if (gs_addr < 0 || gs_addr > 0x3fff || (unsigned)width_log2 > 10 || (unsigned)height_log2 > 10)
     {
         return;
     }
 
-    /* Repeated setup within one movie retains its picture. A new movie
-     * follows VideoEnd(), even when it uses the same GS address. */
-    if (g_gs_addr.load(std::memory_order_relaxed) == gs_addr)
+    const int page = PackTexturePage(gs_addr, width_log2, height_log2);
+    if (g_texture_page.load(std::memory_order_relaxed) == page)
     {
         return;
     }
@@ -67,12 +71,12 @@ void ReiPan_VideoBegin(int gs_addr)
     }
 
     g_generation.fetch_add(1, std::memory_order_release);
-    g_gs_addr.store(gs_addr, std::memory_order_release);
+    g_texture_page.store(page, std::memory_order_release);
 }
 
 void ReiPan_VideoEnd(void)
 {
-    g_gs_addr.store(-1, std::memory_order_release);
+    g_texture_page.store(-1, std::memory_order_release);
 
     std::lock_guard<std::mutex> guard(g_lock);
     g_has_frame = false;
@@ -80,7 +84,7 @@ void ReiPan_VideoEnd(void)
 
 int ReiPan_VideoIsLive(void)
 {
-    return g_gs_addr.load(std::memory_order_acquire) >= 0 ? 1 : 0;
+    return g_texture_page.load(std::memory_order_acquire) >= 0 ? 1 : 0;
 }
 
 unsigned int ReiPan_VideoGeneration(void)
@@ -88,9 +92,9 @@ unsigned int ReiPan_VideoGeneration(void)
     return g_generation.load(std::memory_order_acquire);
 }
 
-int ReiPan_VideoGsAddr(void)
+int ReiPan_VideoMatchesTexture(int gs_addr, int width_log2, int height_log2)
 {
-    return g_gs_addr.load(std::memory_order_acquire);
+    return g_texture_page.load(std::memory_order_acquire) == PackTexturePage(gs_addr, width_log2, height_log2);
 }
 
 unsigned char *ReiPan_VideoBeginFrame(int width, int height)

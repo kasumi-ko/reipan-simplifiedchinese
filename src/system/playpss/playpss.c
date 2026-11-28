@@ -26,6 +26,9 @@
 #include "system/playpss/playpss.h"
 #include "system/playpss/audiodec.h"
 #include "system/playpss/ldimage.h"
+#include "reipan/rendering/reipan_video.h"
+
+#include <bit>
 
 #include "sdk/eekernel.h"               // threads, semaphores, INTC
 #include "sdk/eeregs.h"                 // REG_RCNT0_*, REG_DMAC_4_IPU_TO_*
@@ -692,6 +695,8 @@ int playPssSetTexPacket(playPssRsrcs *rsrcs, int tbp, int *size, int width, int 
 
     if (playpss_mp.frameCount == 0)
     {
+        ReiPan_VideoBegin(tbp, std::bit_width(static_cast<unsigned>(width - 1)),
+                          std::bit_width(static_cast<unsigned>(height - 1)));
         sTexPacketSize = setLoadTexTags(rsrcs->path3tag, rsrcs->rgb32, 0, 0,
                                         playpss_mp.width, playpss_mp.height, tbp);
         bgDuration = (int)((float)playpss_mp.width * (float)playpss_mp.height * PSS_REFILL_PER_PIXEL);

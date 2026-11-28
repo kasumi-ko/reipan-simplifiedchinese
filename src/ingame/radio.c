@@ -219,14 +219,25 @@ void Radio::Play(int loudest)
 void Radio::DrawCaption()
 {
     u_char alpha;
+    int caption = radio_dat[no].caption;
 
-    if (radio_dat[no].caption < 0 || loudest == 0 || !(vol > 0.25f))
+    if (caption < 0 || loudest == 0 || !(vol > 0.25f))
         return;
 
+#ifdef REIPAN_SLPS_25544_CHS
+    // The same broadcasts have authored text at their alternate placements.
+    if (caption < 6)
+    {
+        static constexpr int captions[] = {11, 13, -1, 12, -1, -1};
+        caption = captions[caption];
+        if (caption < 0)
+            return;
+    }
+#endif
     alpha = 0x80;
     if (vol < 0.5f)
         alpha = (u_char)(int)((vol - 0.25f) * 4.0f * 128.0f);
-    MovieTitleDispMain(0x7c, radio_dat[no].caption, 0x17c, 0xc, 1, alpha, 1);
+    MovieTitleDispMain(0x7c, caption, 0x17c, 0xc, 1, alpha, 1);
 }
 
 // ──────────────────────────────────────────────────────────────────────
