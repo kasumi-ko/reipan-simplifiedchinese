@@ -1,14 +1,12 @@
 # ReiPan 简体中文版
 
-ReiPan 是《零～刺青之声～ / Fatal Frame III: The Tormented》的 PS2 至 PC 原生移植项目。本仓库基于 Mikompilation 的 ReiPan，为 Windows 提供日版游戏的简体中文适配。[上游仓库](https://github.com/Mikompilation/ReiPan)
+ReiPan 是《零～刺青之声～ / Fatal Frame III: The Tormented》的 PlayStation®2 至 PC 原生移植项目。本仓库基于 Mikompilation 的 ReiPan，为 Windows 提供日版游戏的简体中文适配。
 
-## 适用版本与维护状态
+## 适用版本
 
 - 本分支仅提供 Windows 构建。
 - 游戏资源读取已转换为日版 NTSC-J，对应游戏编号 `SLPS-25544`，光盘启动文件为 `SLPS_255.44`。
 - 为了正常显示简体中文，**必须使用扑家汉化组制作的日版汉化 ISO**。本分支按该版本的字库、文字编码和资源布局适配。
-
-
 
 ## 游戏文件
 
@@ -24,6 +22,10 @@ ReiPan/
 ```
 
 `IMG_BD.BIN` 与 `ZERO3.FHD` 需要放在同一目录。选定路径后，程序会将其保存在 `reipan.ini` 的 `[paths]` 配置项中。后续可通过设置菜单中的游戏数据文件夹选项修改路径。
+
+## 调试框
+
+游戏运行时，按 `F1` 可以打开调试框，访问设置与调试菜单。
 
 ## Windows 构建
 
@@ -49,12 +51,12 @@ Windows 默认使用 Direct3D 12。可以在图形设置中选择图形后端，
 
 支持独立扳机马达的 Xbox 手柄可使用扳机震动。可在震动设置中调整强度及测试各个马达。
 
-## PS2 存档转移
+## PlayStation®2 存档转移
 
-通过设置菜单中的 PS2 存档转移功能，可以导入或导出游戏存档。上游支持从提取的存档目录、8 MB 记忆卡以及 PSU、MAX、XPS、SPS、CBS 存档包导入，并可导出为以下格式。
+通过设置菜单中的 PlayStation®2 存档转移功能，可以导入或导出游戏存档。上游支持从提取的存档目录、Memory Card (8MB) (for PlayStation®2) 映像以及 PSU、MAX、XPS、SPS、CBS 存档包导入，并可导出为以下格式。
 
-- 带 ECC 的 `.ps2` 记忆卡。
-- 无 ECC 的 `.bin` 记忆卡。
+- 带 ECC 的 Memory Card (8MB) (for PlayStation®2) 映像（`.ps2`）。
+- 无 ECC 的 Memory Card (8MB) (for PlayStation®2) 映像（`.bin`）。
 - `.psu`、`.max`、`.xps`、`.sps`、`.cbs` 存档包。
 - 提取的游戏存档目录。
 
@@ -70,12 +72,14 @@ Windows 默认使用 Direct3D 12。可以在图形设置中选择图形后端，
 
 ## 致谢
 
-感谢 Mikompilation 及 ReiPan 原仓库的所有贡献者，为《零～刺青之声～ / Fatal Frame III: The Tormented》的 PC 原生移植提供基础。感谢扑家汉化组的汉化工作。[ReiPan 原仓库](https://github.com/Mikompilation/ReiPan)
+感谢 Mikompilation 及 [ReiPan](https://github.com/Mikompilation/ReiPan) 的所有贡献者，为《零～刺青之声～ / Fatal Frame III: The Tormented》的 PC 原生移植提供基础。感谢扑家汉化组的汉化工作。
 
 ## 版权与许可
 
-《零～刺青之声～ / Fatal Frame III: The Tormented》原版作品的版权署名包括 **TECMO, LTD.（特库摩）**。《零》系列及其游戏名称、角色、剧情、美术、音乐、影像、原版程序和相关商标的权利归 **KOEI TECMO GAMES CO., LTD.（光荣特库摩）**及其他相应权利人所有。
+《零～刺青之声～ / Fatal Frame III: The Tormented》原版作品的版权署名包括 **TECMO, LTD.**（特库摩）。《零》系列及其游戏名称、角色、剧情、美术、音乐、影像、原版程序和相关商标的权利归 **KOEI TECMO GAMES CO., LTD.**（光荣特库摩）及其他相应权利人所有。
 
-本项目为社区移植与简体中文适配项目。开源移植及适配代码遵循 GNU Affero General Public License v3.0，具体条款见仓库许可文件。[LICENSE](LICENSE)
+“PlayStation”是 [Sony Interactive Entertainment Inc.](https://www.playstation.com/zh-hans-cn/legal/copyright-and-trademark-notice/) 的注册商标或商标。“SONY”是 Sony Group Corporation 的注册商标或商标。其他产品名称、服务名称、标志和公司名称的商标与版权归各自所有者或授权方所有。
+
+本项目为社区移植与简体中文适配项目，开源移植及适配代码采用 [GNU Affero General Public License v3.0](LICENSE) 许可。
 
 扑家汉化组制作的汉化文本与相关汉化资源保留原团队署名，相关权利归各自权利人所有。运行所需的 ISO 与光盘数据请自行准备。
