@@ -50,6 +50,11 @@
 #define SUBTITLE_MSG_COL        1
 #define SUBTITLE_ALPHA          0x80
 
+#ifdef REIPAN_SLPS_25544_CHS
+// Fits two native caption lines above the gameplay dialogue window.
+#define SUBTITLE_ABOVE_DIALOG_Y 0x120
+#endif
+
 // Voice streams: priority 0xe, full volume.
 #define SUBTITLE_STREAM_PRIORITY    0xe
 #define SUBTITLE_STREAM_VOL         0x3200
@@ -200,8 +205,11 @@ void SubTitleMain(int subtitle_on, int check_disp)
     const bool audio_only = ctrl->Status == SUBTITLE_STATUS_IDLE ||
         (ctrl->Status == SUBTITLE_STATUS_EXEC && ctrl->pSubTitleData != nullptr &&
          ctrl->pSubTitleData->MsgData[0].MsgId == SUBTITLE_MSG_HOLD);
-    if (subtitle_on && audio_only && (check_disp == 0 || MsgIsPageWait() == 0))
-        SlpsDrawVoiceCaption(SUBTITLE_DISP_Y, SUBTITLE_MSG_COL);
+    if (subtitle_on && audio_only)
+    {
+        const bool dialogue = check_disp != 0 && MsgIsPageWait() != 0;
+        SlpsDrawVoiceCaption(dialogue ? SUBTITLE_ABOVE_DIALOG_Y : SUBTITLE_DISP_Y, SUBTITLE_MSG_COL);
+    }
 #endif
 
     if (ctrl->Status == SUBTITLE_STATUS_PRELOAD)
