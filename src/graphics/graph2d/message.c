@@ -1429,7 +1429,21 @@ u_char *GetMsgDataAddr(int msg_type, int msg_id)
 {
     u_char *top = (u_char *)ReiPan_GetHostPointer(MSG_DATA_ADRS);
     if (u_char *message = FindMessage(top, msg_data_size, msg_type, msg_id))
+    {
+#ifdef REIPAN_SLPS_25544_CHS
+        if (use_chs_font_widths && msg_type == 0x56)
+        {
+            // Use the native zero glyph for the two mixed-script film names.
+            static u_char film07[] = {0xf0, 0xd1, 0xf3, 0x73, 0x96, 0xf0, 0xb2, 0x75, MSG_CODE_END};
+            static u_char film90[] = {0xf3, 0x77, 0xf0, 0xd1, 0x96, 0xf0, 0xb2, 0x75, MSG_CODE_END};
+            if (msg_id == 0)
+                return film07;
+            if (msg_id == 3)
+                return film90;
+        }
+#endif
         return message;
+    }
 
     static u_char blank[] = {0xff, 0, 0, 0};
     static std::set<std::pair<int, int>> reported;
