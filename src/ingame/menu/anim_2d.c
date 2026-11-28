@@ -283,6 +283,16 @@ void HUD_LAYOUT::Main()
 void HUD_LAYOUT::Start()
 {
     UpdateItems();
+#ifdef REIPAN_SLPS_25544_CHS
+    if (file == 0x11e2)
+    {
+        const int handle = BpCtlGetHandleByFileNo(file);
+        // status_H stores its digit samples to the left of the PS2 viewport.
+        for (int id = 0x3e9; id <= 0x3f2; ++id)
+            if (B2D_ITEM *item = B2dCtlFindItem(handle, id))
+                B2dSprSetDisp(item, 0);
+    }
+#endif
 }
 
 // ──────────────────────────────────────────────────────────────────────

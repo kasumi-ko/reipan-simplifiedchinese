@@ -792,12 +792,17 @@ static int MapDoorModeMsgOpen(void)
 // ──────────────────────────────────────────────────────────────────────
 // The door stays shut: once the try anime ends the player gets back the
 // normal mode and the pos from before the door; lock states 3 / 4 show
-// message 8 / 9 of group 0x82, any other ends the phase.
+// locked-door message 8 / 9, any other ends the phase.
 // FF3 0x001f2f70.
 // callcheck: operator_new, SelWinCtor (new CWindowMsg)
 
 int MapDoorModeClose(void)
 {
+#ifdef REIPAN_SLPS_25544_CHS
+    constexpr int door_message_group = 0x81; // SLPS_255.44 0x001edc50
+#else
+    constexpr int door_message_group = 0x82;
+#endif
     int ret = IngameMain(0x1c);
 
     IngameDrawSub(0);
@@ -836,7 +841,7 @@ int MapDoorModeClose(void)
         {
             map_door_win = new CWindowMsg;
             map_door_win->Open();
-            map_door_win->StartMsg(0x82, msg, 1);
+            map_door_win->StartMsg(door_message_group, msg, 1);
             map_door_win->SetAutoClose(1);
             map_door_step = MapDoorModeMsgOpen;
         }

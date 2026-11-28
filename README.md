@@ -20,18 +20,29 @@ ReiPan 是《零～刺青之声～ / Fatal Frame III: The Tormented》的 PlaySt
 
 ## 游戏文件
 
-请自行准备上述扑家汉化组的汉化 ISO。可以在游戏数据选择界面指定该 ISO，或从光盘中提取游戏数据后选择对应目录。提取时应保留完整光盘目录结构，主要文件布局如下。
+请自行准备上述扑家汉化组的汉化 ISO。在仓库目录用 Python 3 运行以下命令，第二个参数指定一个尚不存在的数据输出目录。脚本以只读方式打开 ISO，在输出目录中生成端口所需的文件。
+
+```powershell
+python .\tools\prepare_slps25544.py "D:\游戏镜像\零~刺青之声汉化版Ver1.0.ISO" "D:\ReiPan\data"
+```
+
+将生成的 `data` 放在 EXE 旁，或在游戏数据选择界面选择该目录内的 `IMG_BD.BIN`。请保留生成的整个目录结构。
 
 ```text
 ReiPan/
 ├─ ReiPan-SimplifiedChinese.exe
-└─ binary/
+└─ data/
    ├─ IMG_BD.BIN
    ├─ ZERO3.FHD
-   └─ SLPS_255.44
+   ├─ font_widths.bin
+   └─ bin/
+      └─ data/
+         ├─ 2ddata/b2d/reipan_caption.b2d
+         ├─ msg/reipan_msg.obj
+         └─ subtitle/reipan_subtitle.obj
 ```
 
-`IMG_BD.BIN` 与 `ZERO3.FHD` 需要放在同一目录。选定路径后，程序会将其保存在 `reipan.ini` 的 `[paths]` 配置项中。后续可通过设置菜单中的游戏数据文件夹选项修改路径。
+字幕补充与画面修复编入端口，在运行时应用。选定数据后，程序会将路径保存在 `reipan.ini` 的 `[paths]` 配置项中。后续可通过设置菜单中的游戏数据文件夹选项修改路径。
 
 ## 调试框
 

@@ -51,6 +51,7 @@
 #include "graphics/effect/effect_oth.h"         // EffectMonochromeSet
 #include "ingame/enemy/enemy_act.h"             // EneActReqById
 #include "graphics/motion/anicode.h"            // ItemGet*, MsgView*, msg_pic_key_dat
+#include "system/eeiop/cd_file_dat.h"           // ITEM_000_TM2, EVENT_002_TM2, FG_VOICE_IKINOKORI_00_STR_STR
 #include "ingame/memo/memo.h"            // MemoSetPage, MemoOpen, memo_flg
 #include "ingame/candle_ctrl.h"                 // GetCandleControl, CandleControlSet*
 #include "ingame/cat/cat_ctrl.h"                // the cat NPCs
@@ -176,6 +177,44 @@ int EvMoviePlay(EV_EXE_CTRL *ctrl)
 }
 
 // ──────────────────────────────────────────────────────────────────────
+// The adapted file table keeps the port's named file IDs. EVENT_OBJ and
+// EV_MISSION_OBJ still hold the SLPS_255.44 file IDs.
+static int EventPictureFile(int file)
+{
+#ifdef REIPAN_SLPS_25544_CHS
+    if (file >= 0x0024 && file <= 0x054f)
+        return ITEM_000_TM2 + file - 0x0024;
+    if (file >= 0x07c3 && file <= 0x07cf)
+        return EVENT_002_TM2 + file - 0x07c3;
+    if (file >= 0)
+        return -1;
+#endif
+    return file;
+}
+
+static int EventStreamFile(int file)
+{
+#ifdef REIPAN_SLPS_25544_CHS
+    // Each stream in this SLPS_255.44 span is followed by its HXD.
+    if (file >= 0x0f40 && file <= 0x1120 && (file & 1) == 0)
+        return FG_VOICE_IKINOKORI_00_STR_STR + file - 0x0f40;
+    if (file >= 0)
+        return -1;
+#endif
+    return file;
+}
+
+static int EventSoundBankFile(int file)
+{
+#ifdef REIPAN_SLPS_25544_CHS
+    if (file >= 0x1911 && file <= 0x1af3 && (file & 1) != 0)
+        return SHOCK_00_BD_BD + file - 0x1911;
+    if (file >= 0)
+        return -1;
+#endif
+    return file;
+}
+
 // DISP2D_START "1122222": the item-get window with picture args[1] and the
 // texts args[4] / args[5] (either < 0: no text, flag 1). Done once the
 // window's layout anim reaches state 2 (open).
@@ -183,13 +222,12 @@ int EvMoviePlay(EV_EXE_CTRL *ctrl)
 
 int EvDisp2DStart(EV_EXE_CTRL *ctrl)
 {
-    int pic  = ctrl->args[1];
     int msg0 = ctrl->args[4];
     int msg1 = ctrl->args[5];
 
     if (ctrl->process == 0) {
         ev_disp2d_anim = LayoutAnimStart(2, 0);
-        ItemGetSetPic(pic);
+        ItemGetSetPic(EventPictureFile(ctrl->args[1]));
         ItemGetSetMsg(msg0, msg1);
         ItemGetSetFlags((msg0 < 0 || msg1 < 0) ? 1 : 0);
         LockTblInc(9);
@@ -319,9 +357,14 @@ int EvSubTitleDispReq(EV_EXE_CTRL *ctrl)
 
 int EvSubTitle3DObjDispReq(EV_EXE_CTRL *ctrl)
 {
+#ifdef REIPAN_SLPS_25544_CHS
+    // This handler is a no-op in SLPS_255.44 (0x0019d1d0).
+    (void)ctrl;
+#else
     int *args = ctrl->args;
 
     SubTitleReq3DObj(args[0], args[1], args[2], args[3]);
+#endif
     return 1;
 }
 
@@ -2669,21 +2712,24 @@ int EvGetDevelopFilm(EV_EXE_CTRL *ctrl)
 
 int EvSoundLoad(EV_EXE_CTRL *ctrl)
 {
-    ev_seRegisterFile(ctrl->args[0], ctrl->args[1], 1);
+    const int file = EventSoundBankFile(ctrl->args[1]);
+    if (file >= 0)
+        ev_seRegisterFile(ctrl->args[0], file, 1);
     return 1;
 }
 
 // FF3 0x001a19c8
 int EvSoundPreloadRegist(EV_EXE_CTRL *ctrl)
 {
-    ev_seRegisterFile(ctrl->args[0], ctrl->args[1], 1);
-    return 1;
+    return EvSoundLoad(ctrl);
 }
 
 // FF3 0x001a19f8
 int EvSoundRelease(EV_EXE_CTRL *ctrl)
 {
-    ev_seDeleteFile(ctrl->args[0], ctrl->args[1]);
+    const int file = EventSoundBankFile(ctrl->args[1]);
+    if (file >= 0)
+        ev_seDeleteFile(ctrl->args[0], file);
     return 1;
 }
 
@@ -4053,9 +4099,13 @@ int EvStreamPreload(EV_EXE_CTRL *ctrl)
     file_label = ctrl->args[1];
     loop = ctrl->args[0];
 
+    const int file = EventStreamFile(file_label);
+    if (file < 0)
+        return 1;
+
     id = -1;
     if (IsRegist_StreamID(file_label) == 0) {
-        id = StreamAutoPreloadPitch(file_label, file_label + 1, 0xe, 0, loop, 0x3200, 0, nullptr, 0x1000);
+        id = StreamAutoPreloadPitch(file, file + 1, 0xe, 0, loop, 0x3200, 0, nullptr, 0x1000);
     }
     Regist_StreamID(id, file_label, EV_STREAM_ST_PRELOAD);
     return 1;
@@ -4124,7 +4174,9 @@ int EvMapStreamStop(EV_EXE_CTRL *ctrl)
 
 int EvMapStreamChange(EV_EXE_CTRL *ctrl)
 {
-    map_bgmChangeTbl(ctrl->args[0], ctrl->args[1]);
+    const int file = EventStreamFile(ctrl->args[1]);
+    if (file >= 0 || ctrl->args[1] < 0)
+        map_bgmChangeTbl(ctrl->args[0], file);
     return 1;
 }
 
@@ -4487,7 +4539,10 @@ int EvStreamPlaySub(int file_label, int priority, int effect, int loop, int vol,
     memset(&set, 0, sizeof(set));
     s3s = (pos != nullptr) ? &set : nullptr;
     set.pos = pos;
-    return StreamAutoPlayPitch(file_label, file_label + 1, priority, effect, loop, vol, in_time, s3s, pitch);
+    const int file = EventStreamFile(file_label);
+    if (file < 0)
+        return -1;
+    return StreamAutoPlayPitch(file, file + 1, priority, effect, loop, vol, in_time, s3s, pitch);
 }
 
 // ──────────────────────────────────────────────────────────────────────

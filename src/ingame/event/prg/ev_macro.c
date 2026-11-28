@@ -164,7 +164,11 @@ static EV_EXE_WRK ev_exe_wrk[EV_EXE_WRK_NUM] = {    // data 0x3556b8
     { 134, EvPadWait,                 4, "22",      "EV_PAD_WAIT" },
     { 135, EvGameOverRequest,         4, "112",     "GAMEOVER_REQUEST" },
     { 136, EvSubTitleDispReq,         4, "112",     "SUBTITLE_DISP_REQ" },
+#ifdef REIPAN_SLPS_25544_CHS
+    { 137, EvSubTitle3DObjDispReq,    8, "1124",    "SUBTITLE3D_OBJ_DISP_REQ" },
+#else
     { 137, EvSubTitle3DObjDispReq,    8, "11222",   "SUBTITLE3D_OBJ_DISP_REQ" },
+#endif
     { 138, EvSubTitle3DPosDispReq,   16, "112444",  "SUBTITLE3D_POS_DISP_REQ" },
     { 139, EvSubTitleStop,            4, "112",     "SUBTITLE_STOP" },
     { 140, EvSetGhostSealDoor,        4, "112",     "SET_GHOST_SEAL_DOOR" },
