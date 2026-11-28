@@ -1,5 +1,15 @@
 # ReiPan 简体中文版
 
+<p align="center">
+  <a href="https://github.com/Mikompilation/ReiPan">
+    <img src="https://img.shields.io/badge/Mikompilation-ReiPan-7C3AED?style=flat-square&amp;logo=github&amp;logoColor=white&amp;labelColor=18181B" alt="Mikompilation / ReiPan 上游仓库" height="32">
+  </a>
+  <br>
+  <strong>原生移植上游</strong>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/Mikompilation/ReiPan">访问 ReiPan 仓库 ↗</a>
+</p>
+
 ReiPan 是《零～刺青之声～ / Fatal Frame III: The Tormented》的 PlayStation®2 至 PC 原生移植项目。本仓库基于 Mikompilation 的 ReiPan，为 Windows 提供日版游戏的简体中文适配。
 
 ## 适用版本
@@ -78,7 +88,7 @@ Windows 默认使用 Direct3D 12。可以在图形设置中选择图形后端，
 
 《零～刺青之声～ / Fatal Frame III: The Tormented》原版作品的版权署名包括 **TECMO, LTD.**（特库摩）。《零》系列及其游戏名称、角色、剧情、美术、音乐、影像、原版程序和相关商标的权利归 **KOEI TECMO GAMES CO., LTD.**（光荣特库摩）及其他相应权利人所有。
 
-“PlayStation”是 [Sony Interactive Entertainment Inc.](https://www.playstation.com/zh-hans-cn/legal/copyright-and-trademark-notice/) 的注册商标或商标。“SONY”是 Sony Group Corporation 的注册商标或商标。其他产品名称、服务名称、标志和公司名称的商标与版权归各自所有者或授权方所有。
+依据 [Sony 官方版权和商标声明](https://www.playstation.com/zh-hans-cn/legal/copyright-and-trademark-notice/)，“PlayStation”是 Sony Interactive Entertainment Inc. 的注册商标或商标。“SONY”是 Sony Group Corporation 的注册商标或商标。其他产品名称、服务名称、标志和公司名称的商标与版权归各自所有者或授权方所有。
 
 本项目为社区移植与简体中文适配项目，开源移植及适配代码采用 [GNU Affero General Public License v3.0](LICENSE) 许可。
 
