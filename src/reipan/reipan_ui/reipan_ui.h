@@ -77,7 +77,8 @@ bool Init(SDL_Window *window, SDL_GPUDevice *device,
 void Shutdown();
 
 void SetPerformanceStats(const PerformanceStats &stats);
-void ProcessEvent(const SDL_Event *event);
+/* True when the overlay claims the event before it reaches the Port menus. */
+bool ProcessEvent(const SDL_Event *event);
 void BeginFrame();
 void Draw();
 void EndFrame();

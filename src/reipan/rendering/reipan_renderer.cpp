@@ -4125,7 +4125,7 @@ void PumpEvents()
      * SDL_PollEvent itself when the game runs on the main thread. */
     while (ReiPan_HostPollEvent(&event))
     {
-        ReiPanUi::ProcessEvent(&event);
+        const bool overlay_handled = ReiPanUi::ProcessEvent(&event);
         const int menu_handled = ReiPan_MenuMouseEvent(&event, ReiPan_InputMenuPointerFree(),
                                                        ReiPan_InputMenuKeysFree());
         // A tap may begin and end between two 30 Hz pad reads.
@@ -4140,7 +4140,10 @@ void PumpEvents()
         ReiPan_GyroEvent(&event);
         /* A menu that closes on this event lifts its hold on the controls
          * with it; the input layer keeps the closing press from the game. */
-        ReiPanRml::ProcessEvent(&event);
+        if (!overlay_handled)
+        {
+            ReiPanRml::ProcessEvent(&event);
+        }
 
         if (event.type == SDL_EVENT_QUIT)
         {

@@ -3,6 +3,7 @@
 #include "reipan_ui_locale.h"
 #include "reipan_ui_saves.h"
 #include "reipan_ui_title.h"
+#include "reipan_version.h"
 #include "../os/reipan_pacing.h"
 #include "../rendering/reipan_renderer.h"
 #include "../reipan_config.h"
@@ -2965,6 +2966,20 @@ void DrawMainMenuBar()
     DrawAssistsMenu();
     DrawDebugMenu();
 
+    if (ImGui::BeginMenu(UiText("Info")))
+    {
+        ImGui::TextUnformatted(REIPAN_PROJECT_NAME);
+        ImGui::Separator();
+        ImGui::Text(UiText("Version: %s"), REIPAN_RELEASE_VERSION);
+        ImGui::Text(UiText("Author: %s"), REIPAN_PROJECT_AUTHOR);
+        ImGui::TextLinkOpenURL(UiText("GitHub repository"), REIPAN_PROJECT_URL);
+        if (ImGui::Button(UiText("Copy version to clipboard")))
+        {
+            ImGui::SetClipboardText(REIPAN_RELEASE_VERSION);
+        }
+        ImGui::EndMenu();
+    }
+
     /* Mouse look captures the pointer, so it waits while this bar is up. */
     ReiPan_GameMouseSettings mouse;
     ReiPan_GameMouseGetSettings(&mouse);
@@ -3622,32 +3637,43 @@ void Shutdown()
     ClearProfilerHistory();
 }
 
-void ProcessEvent(const SDL_Event *event)
+bool ProcessEvent(const SDL_Event *event)
 {
-    if (IsInitialized() && event != nullptr)
+    if (!IsInitialized() || event == nullptr)
     {
-        ImGui::SetCurrentContext(g_context);
+        return false;
+    }
+    ImGui::SetCurrentContext(g_context);
 
-        /* Capture first, and swallow what it takes.  Keyboard and gamepad
-         * nav are both on, so a Space or an A reaching ImGui would
-         * re-activate the very button that armed the capture. */
-        if (HandleCaptureEvent(event))
-        {
-            return;
-        }
+    /* Capture first, and swallow what it takes.  Keyboard and gamepad
+     * nav are both on, so a Space or an A reaching ImGui would
+     * re-activate the very button that armed the capture. */
+    if (HandleCaptureEvent(event))
+    {
+        return true;
+    }
 
-        ImGui_ImplSDL3_ProcessEvent(event);
-        bool toggle = event->type == SDL_EVENT_KEY_DOWN && !event->key.repeat &&
-                      event->key.scancode == SDL_SCANCODE_F1;
-        if (toggle)
-        {
-            g_show_main_menu_bar = !g_show_main_menu_bar;
+    ImGui_ImplSDL3_ProcessEvent(event);
+    if (event->type == SDL_EVENT_KEY_DOWN && !event->key.repeat &&
+        event->key.scancode == SDL_SCANCODE_F1)
+    {
+        g_show_main_menu_bar = !g_show_main_menu_bar;
 #ifndef REIPAN_SLPS_25544_CHS
-            /* Remembered for the next launch. */
-            reipan_config.overlay_menu_bar = g_show_main_menu_bar ? 1 : 0;
-            ReiPan_ConfigSave();
+        /* Remembered for the next launch. */
+        reipan_config.overlay_menu_bar = g_show_main_menu_bar ? 1 : 0;
+        ReiPan_ConfigSave();
 #endif
-        }
+    }
+
+    switch (event->type)
+    {
+    case SDL_EVENT_MOUSE_MOTION:
+    case SDL_EVENT_MOUSE_BUTTON_DOWN:
+    case SDL_EVENT_MOUSE_BUTTON_UP:
+    case SDL_EVENT_MOUSE_WHEEL:
+        return ImGui::GetIO().WantCaptureMouse;
+    default:
+        return false;
     }
 }
 

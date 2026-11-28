@@ -149,7 +149,11 @@ add_custom_command(TARGET ReiPan POST_BUILD
             "$<TARGET_FILE_DIR:ReiPan>/resources/fonts"
 )
 
-set_property(SOURCE src/reipan/io/reipan_log.cpp src/reipan/rendering/reipan_renderer.cpp APPEND PROPERTY
+set_property(SOURCE
+    src/reipan/io/reipan_log.cpp
+    src/reipan/rendering/reipan_renderer.cpp
+    src/reipan/reipan_ui/reipan_ui.cpp
+    APPEND PROPERTY
     INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}/generated")
 message(STATUS "${PROJECT_NAME} ${REIPAN_RELEASE_VERSION}")
 

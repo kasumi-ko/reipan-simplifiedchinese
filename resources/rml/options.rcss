@@ -288,6 +288,7 @@
     height: 32dp;
     font-size: 11.5dp;
     font-style: italic;
+    word-break: break-word;
     color: #8d9780;
 }
 
