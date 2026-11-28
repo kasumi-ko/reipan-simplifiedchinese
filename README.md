@@ -88,7 +88,7 @@ Windows 默认使用 Direct3D 12。可以在图形设置中选择图形后端，
 
 《零～刺青之声～ / Fatal Frame III: The Tormented》原版作品的版权署名包括 **TECMO, LTD.**（特库摩）。《零》系列及其游戏名称、角色、剧情、美术、音乐、影像、原版程序和相关商标的权利归 **KOEI TECMO GAMES CO., LTD.**（光荣特库摩）及其他相应权利人所有。
 
-依据 [Sony 官方版权和商标声明](https://www.playstation.com/zh-hans-cn/legal/copyright-and-trademark-notice/)，“PlayStation”是 Sony Interactive Entertainment Inc. 的注册商标或商标。“SONY”是 Sony Group Corporation 的注册商标或商标。其他产品名称、服务名称、标志和公司名称的商标与版权归各自所有者或授权方所有。
+“PlayStation”是 Sony Interactive Entertainment Inc. 的注册商标或商标。“SONY”是 Sony Group Corporation 的注册商标或商标。其他产品名称、服务名称、标志和公司名称的商标与版权归各自所有者或授权方所有。
 
 本项目为社区移植与简体中文适配项目，开源移植及适配代码采用 [GNU Affero General Public License v3.0](LICENSE) 许可。
 
